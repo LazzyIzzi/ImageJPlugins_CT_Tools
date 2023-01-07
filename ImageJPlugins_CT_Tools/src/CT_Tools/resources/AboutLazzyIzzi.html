@@ -1,0 +1,27 @@
+<title>About LazzyIzzi</title>
+<link rel="icon" type="image/x-icon" href="Images/LazzyIzzi.jpg"> 
+<h1>About LazzyIzzi</h1> 
+<h2><a href="index.html" target="_self"><em><strong>Home</strong></em></a></h2>
+
+<p>&nbsp;</p>
+
+<p>We have all heard the old chestnut "Necessity is the mother of invention". Invention has many fathers, and laziness is certainly a proud papa.  How many times have you embarked on a project because you thought that, in the long run, it would make your life easier?</p>
+
+<p>LazzyIzzi is himself an invention, an avatar for a retired microscopist who worked in the earth sciences and spent much of his early career developing X-ray microCT instruments for both conventional and synchrotron X-ray sources. Over the years he developed many C/C++ projects to make life easier. Some were scan protocols and reconstruction packages but many were for processing the CT images. Most of the codes on this website are recent ports of C/C++ processing tools to Java. The most useful were MuMassCalculator, the Euclidean(EDM) and geodesic(GDT) transforms, and the related capillary pressure simulations. Java is new territory, about eight months at this writing, so perhaps the Java world will grant a bit of slack and maybe even offer some helpful criticism.  LZIZ is not a professional programmer, just the usual STEM worker (pun intended) trying to make a living.</p>
+
+<h2>The Past</h2> 
+<p> The Excel VBA MuMassCalculator was an essential early component. It began life as a macro for the <a href="https://doi.org/10.1063/1.1698286"  target="_self">Victoreen</a> equation to help identify the components in reconstructed slices.  The NIST-XCOM data was used to improve the accuracy of the next version. That eventually morphed into the Java MuMassCalculatorLib and included some new energy lookup methods and slice reprojectors. The EDM was an early project. It was particularly useful for measuring concentrations as a function of distance from a component surface. A 2D version found its way into a marine resource mapping project. The 3D EDM was pivotal for the MICP simulation.</p>
+
+<h2>Plugin architecture</h2> 
+<p>I have typical relied on extendible commercial image processing packages as the basis for my codes. Signal Analytics IPLab (now defunct as far as I know) was an early C/C++ mainstay . That program rigorously enforced the separation of the user interface from functionality and I carried that model over into most ImageJ plugins. I began using ImageJ soon after it first appeared, first with macros, much later with plugins. So it seemed like a good idea to share some GUI plugins that call these Java libraries. The plugins make it easy to use the codes and serve as examples to others who might find other uses for the libraries.</p>
+
+<h2>The Future</h2> 
+<p>Later this year I'll probably add my plugin for acquiring and analyzing porosity in blue-dyed petrographic thin sections using Beer-Lambert.  There is also a fun project for white-light interferometry that needs porting from C to Java. The original C project was built on IPLab and <a href="https://www.fftw.org/"  target="_blank">FFTW</a> so porting to Java may get interesting. Users may need to buy a <a href="https://www.barnesandnoble.com/w/two-dimensional-phase-unwrapping-dennis-c-ghiglia/1112114990"  target="_blank">book</a> to legally used the embedded phase unwrapping codes.  <strong>Car Show Helper is</strong> a bit different. LazzyIzzi is a Ford Mustang enthusiast.  I got tired of all the manual labor involved in helping run my regional club's car shows. So again I chose to make my life easier. It's a full Excel application and way too complicated for a page or two example.  I'll probably just make videos  for CSH</p>
+
+<p>I hope these projects will be useful to others, but mainly I hope they keep my retired brain from turning to mush.</p>
+<p>All the Best,</p>
+<p>LZIZ</p>
+
+
+<h2><a href="index.html" target="_self"><em><strong>Home</strong></em></a></h2>
+
