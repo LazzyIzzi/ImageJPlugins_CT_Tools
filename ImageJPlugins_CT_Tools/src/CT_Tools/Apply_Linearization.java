@@ -7,7 +7,6 @@ import java.awt.Font;
 import java.awt.TextField;
 import java.util.Vector;
 
-import ij.IJ;
 import ij.ImagePlus;
 import ij.gui.GenericDialog;
 import ij.gui.DialogListener;
