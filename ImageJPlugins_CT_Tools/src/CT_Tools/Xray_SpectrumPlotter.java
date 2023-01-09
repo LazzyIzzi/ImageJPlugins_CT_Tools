@@ -128,42 +128,6 @@ public class Xray_SpectrumPlotter implements PlugIn, ActionListener, DialogListe
 			matlNameSF.getTextField().setText(filteredMatlNames[0]);
 			formulaSF.getTextField().setText(filteredFormulas[0]);
 			break;
-			//			IJ.wait(1000);
-			//			WaitForUserDialog wfu = new WaitForUserDialog("Editor Open","Click OK when done");			
-			//			wfu.show();
-			//			
-			//			loadTagFile(defaultFilePath);
-			//			
-			//			
-			//			filterSF.getTextField().setText("");
-			//			IJ.log(defaultFilePath);
-
-			//			String dir = IJ.getDirectory("plugins");
-			//			String defaultFilePath = dir + "DialogData\\DefaultMaterials.csv";
-			//			//IJ.debugMode=true;
-			//			
-			//			//wait for done file to exist
-			//			try {
-			//				FileWriter fileWriter = new FileWriter (dir+ "TagWriter.txt");
-			//				fileWriter.write("TagFile");
-			//				fileWriter.close();
-			//			} catch (IOException e) {
-			//				// TODO Auto-generated catch block
-			//				e.printStackTrace();
-			//			}
-			//			IJ.run("Materials Editor",defaultFilePath);
-			//			File file = new File(dir+"TagWriter.txt");			
-			//			while(file.exists())
-			//			{
-			//				IJ.wait(100);
-			//			}
-			//			file.delete();
-			//			IJ.log("ran Materials Editor\", defaultFilePath );");
-			//			loadTagFile(defaultFilePath);
-			//			filterSF.getTextField().setText("");
-			//			//matlNameCF.setChoices(matlNames);
-			//
-			//			
 		}
 	}
 	@Override
@@ -271,7 +235,7 @@ public class Xray_SpectrumPlotter implements PlugIn, ActionListener, DialogListe
 		updateBF = gda.getButtonField(gd, "updateBtn");
 		
 		gd.addMessage("_____________________________",myFont);
-		gd.addHelp("https://lazzyizzi.github.io/XrayCalculator.html");
+		gd.addHelp("https://lazzyizzi.github.io/XraySpectrumPlotter.html");
 		gd.setBackground(myColor);
 
 		gd.showDialog();

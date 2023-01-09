@@ -197,7 +197,7 @@ public class Xray_Lookup_Ratio implements PlugIn, ActionListener, DialogListener
 		gd.setInsets(20, 200, 0);
 		gd.addButton("Get keV from ratio", this);
 		getKevBF = gda.getButtonField(gd, "getKeV");
-		gd.addHelp("https://lazzyizzi.github.io/XrayLookup.html");		
+		gd.addHelp("https://lazzyizzi.github.io/XrayLookupRatio.html");		
 		gd.addDialogListener(this);
 		gd.setBackground(myColor);
 		gd.addMessage("Edit tabulated density to match lab measurement");

@@ -67,7 +67,7 @@ public class Tag_Image_To_MuLin implements PlugInFilter
 			gd = new GenericDialog("Convert Tags to MuLin");
 			gd.addMessage("Select and energy.\nClick \"Convert\"",myFont,Color.BLACK);
 			gd.addNumericField("KeV:", keV);
-			gd.addHelp("https://lazzyizzi.github.io/");
+			gd.addHelp("https://lazzyizzi.github.io/TagsToMuLin.html");
 			gd.setBackground(myColor);
 			gd.showDialog();
 

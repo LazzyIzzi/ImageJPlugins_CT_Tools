@@ -169,7 +169,7 @@ public class Xray_Lookup_MuLin implements PlugIn, ActionListener, DialogListener
 		getKevBF = gda.getButtonField(gd, "getKev");
 		
 
-		gd.addHelp("https://lazzyizzi.github.io/XrayLookup.html");		
+		gd.addHelp("https://lazzyizzi.github.io/XrayLookupMuLin.html");		
 		gd.addDialogListener(this);
 		gd.setBackground(myColor);
 		gd.showDialog();
