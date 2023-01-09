@@ -17,5 +17,6 @@ Caveats: The virtual scanners do not model noise.  The detector in the virtual s
 
 Dependencies:  MuMassCalculatorJava8Lib, GenericDialogAddins.
 
-ImageJ_CT_ToolsBundle_Java8.jar contains all you need to create a virtual CT lab.
+<a href="https://github.com/LazzyIzzi/ImageJPlugins_CT_Tools/releases" target="_blank">ImageJ_CT_ToolsBundle_Java8.jar</a>
+contains all you need to create a virtual CT lab.
 
