@@ -53,6 +53,7 @@ import ij.measure.Calibration;
 import java.io.File;
 import java.awt.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import jhd.ImageJAddins.GenericDialogAddin;
 import jhd.ImageJAddins.GenericDialogAddin.*;
@@ -117,13 +118,6 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 	final Color myColor = new Color(240,230,190);//slightly darker than buff
 	Font myFont = new Font(Font.DIALOG, Font.BOLD, 12);
 		
-	ChoiceField padOptionsCF;
-	NumericField detPixCntNF;
-	NumericField scaleFactorNF;
-	NumericField numAnglesNF;
-	NumericField magnificationNF;
-	NumericField srcToDetNF;	
-	MessageField axisToDetMF,detMinCntMF,paddedWidthMF;
 	
 	//*******************************************************************************
 	
@@ -203,6 +197,11 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 					if ((numAngles ^ 1) == numAngles - 1)	numAngles++;	
 					numAnglesNF.setNumber(numAngles);
 					break;
+				case "detectorMaterial":
+					int index = detMaterialCF.getChoice().getSelectedIndex();
+					detFormulaSF.getTextField().setText(bfpSet.matlFormula[index]);
+					detDensityNF.setNumber(bfpSet.matlGmPerCC[index]);					
+					break;
 				}
 			}
 
@@ -213,6 +212,14 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 	}
 
 	//*******************************************************************************
+	ChoiceField padOptionsCF,detMaterialCF;
+	NumericField detPixCntNF,detDensityNF;
+	NumericField scaleFactorNF;
+	NumericField numAnglesNF;
+	NumericField magnificationNF;
+	NumericField srcToDetNF;	
+	MessageField axisToDetMF,detMinCntMF,paddedWidthMF;
+	StringField detFormulaSF;
 
 	private boolean doDialog()
 	{
@@ -220,8 +227,15 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 		//dir= dir.replace("\\","/");
 		//String myURL = "file:///" + dir + "jars/MuMassCalculatorDocs/index.html";
 
-		final String[] targetSymb = {"Ag","Au","Cr","Cu","Mo","Rh","W"};
-		final String[] filterSymb = {"Ag","Al","Cu","Er","Mo","Nb","Rh","Ta"};
+//		final String[] targetSymb = {"Ag","Au","Cr","Cu","Mo","Rh","W"};
+//		final String[] filterSymb = {"Ag","Al","Cu","Er","Mo","Nb","Rh","Ta"};
+		
+		String[] targetSymb = Arrays.copyOf(mmc.getAtomSymbols(),mmc.getAtomSymbols().length); //{"Ag","Au","Cr","Cu","Mo","Rh","W"};
+		String[] filterSymb = Arrays.copyOf(mmc.getAtomSymbols(),mmc.getAtomSymbols().length); //{"Ag","Al","Cu","Er","Mo","Nb","Rh","Ta"};
+		//Sort the element arrays
+		Arrays.sort(targetSymb);
+		Arrays.sort(filterSymb);
+		
 		final String[] padOptions = {"None","Circumscribed", "Next Power of 2"};
 
 		//srcToSampCM is presented for user information
@@ -274,9 +288,26 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 		//Detector
 		gd.setInsets(10,0,0);
 		gd.addMessage("Detector___________________",myFont,Color.BLACK);
+
+		//because the detector material name is not saved in the parameters
+		//find the detector material name using the detector formula
+		int index = 0;
+		for(int i =0;i<bfpSet.matlFormula.length;i++)
+		{
+			if(bfpSet.detFormula.equals(bfpSet.matlFormula[i]))
+			{
+				index=i;
+				break;
+			}			
+		}
+		gd.addChoice("Detector",bfpSet.matlName, bfpSet.matlName[index]);
+		detMaterialCF = gda.getChoiceField(gd, null, "detectorMaterial");
+
 		gd.addStringField("Formula", bfpSet.detFormula);
+		detFormulaSF = gda.getStringField(gd, null, "detFormula");
 		gd.addNumericField("Thickness(cm)", bfpSet.detCM);
 		gd.addNumericField("Density(gm/cc)", bfpSet.detGmPerCC);
+		detDensityNF = gda.getNumericField(gd, null, "detDensity");
 		gd.addCheckbox("Scale to 16-bit proj", scale16);
 		gd.addNumericField("Scale Factor", scaleFactor);
 		

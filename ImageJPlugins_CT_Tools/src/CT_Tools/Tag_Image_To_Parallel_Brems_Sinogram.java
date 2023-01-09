@@ -38,6 +38,7 @@ import java.awt.*;
 import java.util.ArrayList;
 //import java.util.Vector;
 //import java.util.Properties;
+import java.util.Arrays;
 
 import jhd.MuMassCalculator.*;
 //import jhd.MuMassCalculator.ParallelProjectors;
@@ -84,8 +85,11 @@ public class Tag_Image_To_Parallel_Brems_Sinogram implements PlugInFilter , Dial
 	double[] gmPerCC;
 	
 	//Local parameters
-	final String[] targetSymb = {"Ag","Au","Cr","Cu","Mo","Rh","W"};
-	final String[] filterSymb = {"Ag","Al","Cu","Er","Mo","Nb","Rh","Ta"};
+	String[] targetSymb = Arrays.copyOf(mmc.getAtomSymbols(),mmc.getAtomSymbols().length); //{"Ag","Au","Cr","Cu","Mo","Rh","W"};
+	String[] filterSymb = Arrays.copyOf(mmc.getAtomSymbols(),mmc.getAtomSymbols().length); //{"Ag","Al","Cu","Er","Mo","Nb","Rh","Ta"};
+	
+	//targetSymb = null;
+	//targetSymb = Arrays.sort(targetSymb);
 	final String[] padOptions = {"None","Circumscribed", "Next Power of 2"};
 	boolean scale16,padImage;
 	ImagePlus imageImp;
@@ -126,6 +130,10 @@ public class Tag_Image_To_Parallel_Brems_Sinogram implements PlugInFilter , Dial
 			return;
 		}
 		
+		//Sort the element arrays
+		Arrays.sort(targetSymb);
+		Arrays.sort(filterSymb);
+		
 		//the original image width and height
 		originalWidth =ip.getWidth();
 		originalHeight =ip.getHeight();
@@ -149,6 +157,8 @@ public class Tag_Image_To_Parallel_Brems_Sinogram implements PlugInFilter , Dial
 					+ "and place it in the plugins/DialogData folder");
 			return;
 		}
+		
+
 		
 
 		//Read the saved dialog settings
@@ -232,9 +242,9 @@ public class Tag_Image_To_Parallel_Brems_Sinogram implements PlugInFilter , Dial
 //	NumericField srcAccelVoltsNF,srcMilliAmpsNF,srcKevBinsNF,srcKevMinNF;	
 //	ChoiceField filterMaterialCF;
 //	NumericField filterThicknessNF;	
-//	NumericField detThicknessNF,detDensityNF;
-//	StringField detFormulaSF;
-	ChoiceField padOptionsCF;
+	NumericField detThicknessNF,detDensityNF;
+	StringField detFormulaSF;
+	ChoiceField padOptionsCF,detMaterialCF;
 //	CheckboxField scale16CBF;
 	
 	NumericField detPixCntNF;
@@ -292,12 +302,27 @@ public class Tag_Image_To_Parallel_Brems_Sinogram implements PlugInFilter , Dial
 		//Detector set to previous selections
 		gd.setInsets(10,0,0);
 		gd.addMessage("Detector___________________",myFont,Color.BLACK);
+		
+		//because the detector material name is not saved in the parameters
+		//find the detector material name using the detector formula
+		int index = 0;
+		for(int i =0;i<bppSet.matlFormula.length;i++)
+		{
+			if(bppSet.detFormula.equals(bppSet.matlFormula[i]))
+			{
+				index=i;
+				break;
+			}			
+		}
+		gd.addChoice("Detector",bppSet.matlName, bppSet.matlName[index]);
+		detMaterialCF = gda.getChoiceField(gd, null, "detectorMaterial");
+	
 		gd.addStringField("Formula", bppSet.detFormula);
-		//detFormulaSF = gda.getStringField(gd, null, "detFormula");
+		detFormulaSF = gda.getStringField(gd, null, "detFormula");
 		gd.addNumericField("Thickness(cm)", bppSet.detCM);
-		//detThicknessNF = gda.getNumericField(gd, null, "detThickness");
+		detThicknessNF = gda.getNumericField(gd, null, "detThickness");
 		gd.addNumericField("Density(gm/cc)", bppSet.detGmPerCC);
-		//detDensityNF = gda.getNumericField(gd, null, "detDensity");
+		detDensityNF = gda.getNumericField(gd, null, "detDensity");
 		
 		gd.addCheckbox("Scale to 16-bit proj", false);
 		//scale16CBF = gda.getCheckboxField(gd, "scale16");
@@ -595,6 +620,11 @@ public class Tag_Image_To_Parallel_Brems_Sinogram implements PlugInFilter , Dial
 					//make numAngles even
 					if ((numAngles ^ 1) == numAngles - 1)	numAngles++;	
 					numAnglesNF.setNumber(numAngles);
+					break;
+				case "detectorMaterial":
+					int index = detMaterialCF.getChoice().getSelectedIndex();
+					detFormulaSF.getTextField().setText(bppSet.matlFormula[index]);
+					detDensityNF.setNumber(bppSet.matlGmPerCC[index]);					
 					break;
 				}
 			}
