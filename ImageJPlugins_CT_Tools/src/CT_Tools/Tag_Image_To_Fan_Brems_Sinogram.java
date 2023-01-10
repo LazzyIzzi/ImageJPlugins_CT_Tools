@@ -482,7 +482,7 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 		dlogSet.filterGmPerCC = 8.41;
 
 		//Tagged Image
-		dlogSet.pixSizeCM=.001f;
+		dlogSet.pixSizeCM=imageImp.getCalibration().pixelWidth;		
 		//convert Default tag data to arrays
 		int[] tag = new int[tagSet.tagData.size()];
 		String[] name =  new String[tagSet.tagData.size()];

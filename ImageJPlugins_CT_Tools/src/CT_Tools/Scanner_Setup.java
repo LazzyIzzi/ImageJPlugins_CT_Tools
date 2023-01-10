@@ -849,7 +849,7 @@ public class Scanner_Setup implements PlugIn, DialogListener, ActionListener
 		filteredMatlName=matlName;
 		filteredMatlFormula=matlFormula;
 		filteredMatlGmPerCC=matlGmPerCC;
-		
+		Arrays.sort(elementSymb);
 
 		//Read the saved dialog settings
 		bhSet = (MuMassCalculator.BeamHardenParams)ser.ReadSerializedObject(settingsPath);

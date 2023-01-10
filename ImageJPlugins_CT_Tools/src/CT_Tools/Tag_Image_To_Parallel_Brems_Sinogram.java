@@ -157,9 +157,7 @@ public class Tag_Image_To_Parallel_Brems_Sinogram implements PlugInFilter , Dial
 					+ "and place it in the plugins/DialogData folder");
 			return;
 		}
-		
-
-		
+				
 
 		//Read the saved dialog settings
 		bppSet = (ParallelProjectors.BremParallelParams)ser.ReadSerializedObject(settingsPath);
@@ -180,6 +178,19 @@ public class Tag_Image_To_Parallel_Brems_Sinogram implements PlugInFilter , Dial
 		{
 			if(ValidateParams(bppSet))
 			{
+				IJ.log("detCM="+bppSet.detCM);
+				IJ.log("detFormula="+bppSet.detFormula);
+				IJ.log("detGmPerCC="+bppSet.detGmPerCC);
+				IJ.log("filter="+bppSet.filter);
+				IJ.log("filterCM="+bppSet.filterCM);
+				IJ.log("filterGmPerCC="+bppSet.filterGmPerCC);
+				IJ.log("kv="+bppSet.kv);
+				IJ.log("ma="+bppSet.ma);
+				IJ.log("minKV="+bppSet.minKV);
+				IJ.log("nBins="+bppSet.nBins);
+				IJ.log("numAng="+bppSet.numAng);
+				IJ.log("pixSizeCM="+bppSet.pixSizeCM);
+				IJ.log("target="+bppSet.target);				
 				DoRoutine(bppSet);
 				ser.SaveObjectAsSerialized(bppSet, settingsPath);
 			}
@@ -202,7 +213,8 @@ public class Tag_Image_To_Parallel_Brems_Sinogram implements PlugInFilter , Dial
 		dlogSet.filterGmPerCC = 8.41;
 
 		//Tagged Image
-		dlogSet.pixSizeCM=.001f;		
+		
+		dlogSet.pixSizeCM=imageImp.getCalibration().pixelWidth;		
 		//convert Default tag data to arrays
 		int[] tag =  mlt.getTagSetMatlTagAsArray(tagSet);//new int[tagSet.tagData.size()];
 		String[] name =  mlt.getTagSetMatlNamesAsArray(tagSet);//new String[tagSet.tagData.size()];
