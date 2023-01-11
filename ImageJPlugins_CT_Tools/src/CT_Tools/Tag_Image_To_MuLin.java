@@ -2,6 +2,7 @@ package CT_Tools;
 
 import ij.IJ;
 import ij.ImagePlus;
+import ij.WindowManager;
 import ij.gui.GenericDialog;
 import ij.measure.Calibration;
 import ij.plugin.filter.PlugInFilter;
@@ -79,7 +80,18 @@ public class Tag_Image_To_MuLin implements PlugInFilter
 			{
 				GetSelections();
 				ImagePlus tauImp = imp.duplicate();
-				tauImp.setTitle("MuLin at " + keV + "KeV");
+				String title = imp.getTitle();
+				if(title.endsWith(".tif"))
+				{
+					title = title.replace(".tif", "MuLin at " + keV + "KeV.tif");
+				}
+				else
+				{
+					title += "MuLin at " + keV + "KeV";
+				}			
+						
+				title = WindowManager.getUniqueName(title);
+				tauImp.setTitle(title);
 				for(i=1;i<=tauImp.getNSlices();i++)
 				{
 					tauImp.setSlice(i);

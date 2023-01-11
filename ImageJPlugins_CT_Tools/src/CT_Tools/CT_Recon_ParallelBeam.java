@@ -372,9 +372,16 @@ public class CT_Recon_ParallelBeam implements ActionListener, DialogListener, Im
 		//Rename by adding _Recon to the sinogram image title
 		String imgTitle = imageImp.getTitle();
 		if(imgTitle.endsWith(".tif"))
-			reconImp.setTitle(imgTitle.replace(".tif", "_Recon.tif"));
+		{
+			imgTitle = imgTitle.replace(".tif", "_Recon.tif");
+		}
 		else
-			reconImp.setTitle(imgTitle+"_Recon");
+		{
+			imgTitle = imgTitle+"_Recon";
+		}
+		
+		imgTitle = WindowManager.getUniqueName(imgTitle);
+		reconImp.setTitle(imgTitle.replace(".tif", "_Recon.tif"));
 		reconImp.show();		
 
 	}
