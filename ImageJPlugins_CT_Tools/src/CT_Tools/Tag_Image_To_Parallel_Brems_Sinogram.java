@@ -51,204 +51,64 @@ import jhd.Projection.ParallelProjectors.BremParallelParams;
 import jhd.Serialize.Serializer;
 import jhd.TagTools.MatlListTools;
 
+//*******************************************************************************
 
 public class Tag_Image_To_Parallel_Brems_Sinogram implements PlugInFilter , DialogListener
 {
+	final String myDialogTitle = "Polychromatic Parallel Beam CTscan";	
+	final String mySettingsTitle = "Polychromatic_ParallelBeam_Params";
+		
 	//Used to test formulas prior to launching the simulator
 	MuMassCalculator mmc = new MuMassCalculator();
 	
 	//The methods that do the projections
-	ParallelProjectors parPrj = new ParallelProjectors();
+	ParallelProjectors parPrj = new ParallelProjectors();	
 	
 	//A serializable class for storing the  user supplied parameters
 	BremParallelParams bppSet = new  BremParallelParams();
 	
 	//The class used to serialize and save the users selections
 	Serializer ser = new Serializer();
-	
+		
 	//The class used to manage materials Lists
-	MatlListTools mlt=new MatlListTools();	
-	
-	//The ImageJ GenericDialog class
-	GenericDialog gd = new GenericDialog(myDialogTitle);
-	
-	//Addins to make referencing the dialog's components much simpler
-	GenericDialogAddin gda = new GenericDialogAddin();
-	
+	MatlListTools mlt=new MatlListTools();
 	
 	//The nested class containing  materials list tag information
 	MatlListTools.TagSet tagSet;
 	
+	//the full path to the default tagSet
+	String tagSetPath = IJ.getDirectory("plugins") + "DialogData\\DefaultMaterials.csv";
+
+	//The ImageJ GenericDialog class
+	GenericDialog gd = new GenericDialog(myDialogTitle);
+	//Addins to make referencing the dialog's components much simpler
+	GenericDialogAddin gda = new GenericDialogAddin();
+	
 	//Arrays to unpack TagData materials lists
 	String[] matlArr;
-	String[] formula;
+	String[] formula;	
 	double[] gmPerCC;
 	
 	//Local parameters
 	String[] targetSymb = Arrays.copyOf(mmc.getAtomSymbols(),mmc.getAtomSymbols().length); //{"Ag","Au","Cr","Cu","Mo","Rh","W"};
 	String[] filterSymb = Arrays.copyOf(mmc.getAtomSymbols(),mmc.getAtomSymbols().length); //{"Ag","Al","Cu","Er","Mo","Nb","Rh","Ta"};
-	
-	//targetSymb = null;
-	//targetSymb = Arrays.sort(targetSymb);
+
 	final String[] padOptions = {"None","Circumscribed", "Next Power of 2"};
-	boolean scale16,padImage;
+	boolean scale16;//,padImage;
 	ImagePlus imageImp;
 	int originalWidth,originalHeight;
-	int	detPixCnt;
+	double pixelSize;
+	String unit;
+	int	detPixCnt;		
 	double scaleFactor = 6000;
-
-		
-	//the full path to the serialized dialog settings
-	static final String myDialogTitle = "Polychromatic Parallel Beam CTscan";
-	static final String mySettingsTitle = "Polychromatic_ParallelBeam_Params";
-	String dir = IJ.getDirectory("plugins");	
-	String settingsPath = dir+ "DialogSettings" + File.separator + mySettingsTitle + ".ser";
 	
-	//the full path to the default tagSet
-	String tagSetPath = dir + "DialogData\\DefaultMaterials.csv";
+	String dir = IJ.getDirectory("plugins");
+	
+	String settingsPath = dir+ "DialogSettings" + File.separator + mySettingsTitle + ".ser";
 
 	final Color myColor = new Color(240,230,190);//slightly darker than buff
 	Font myFont = new Font(Font.DIALOG, Font.BOLD, 12);
-	
-	//*******************************************************************************
 
-	@Override
-	public int setup(String arg, ImagePlus imp)
-	{
-		this.imageImp = imp;
-		return DOES_32;
-	}
-
-	//*******************************************************************************
-
-	@Override
-	public void run(ImageProcessor ip)
-	{		
-		if(IJ.versionLessThan("1.53u"))// GenericDialog.resetCounters()
-		{
-			IJ.showMessage("ImageJ version 1.53u or better required.");
-			return;
-		}
-		
-		//Sort the element arrays
-		Arrays.sort(targetSymb);
-		Arrays.sort(filterSymb);
-		
-		//the original image width and height
-		originalWidth =ip.getWidth();
-		originalHeight =ip.getHeight();
-		String unit = imageImp.getCalibration().getUnit().toUpperCase();
-		if(!unit.equals("CM"))
-		{
-			IJ.error("Pixel units must be in cm (centimeters)");
-			return;
-		}
-		
-		if(originalWidth != originalHeight)
-		{
-			IJ.showMessage("Image must be Square. Check the PadImage Box in the next dialog");
-		}
-
-		tagSet = mlt.loadTagFile(tagSetPath);
-		if(tagSet==null)
-		{
-			IJ.error("The Materials tagSet failed to load\n"
-					+ "Please locate or create \"DefaultMaterials.csv\"\n"
-					+ "and place it in the plugins/DialogData folder");
-			return;
-		}
-				
-
-		//Read the saved dialog settings
-		bppSet = (ParallelProjectors.BremParallelParams)ser.ReadSerializedObject(settingsPath);
-		
-		if(bppSet==null)
-		{
-			bppSet = getDialogDefaultSettings();
-		}
-		else // the DefaultMaterials.csv file may have been modified since previous plugin run
-		{
-			bppSet.matlFormula = mlt.getTagSetMatlFormulasAsArray(tagSet);
-			bppSet.matlGmPerCC = mlt.getTagSetMatlGmPerccAsArray(tagSet);
-			bppSet.matlName = mlt.getTagSetMatlNamesAsArray(tagSet);
-			bppSet.matlTag = mlt.getTagSetMatlTagAsArray(tagSet);
-		}
-
-		if(DoDialog())
-		{
-			if(ValidateParams(bppSet))
-			{
-				IJ.log("detCM="+bppSet.detCM);
-				IJ.log("detFormula="+bppSet.detFormula);
-				IJ.log("detGmPerCC="+bppSet.detGmPerCC);
-				IJ.log("filter="+bppSet.filter);
-				IJ.log("filterCM="+bppSet.filterCM);
-				IJ.log("filterGmPerCC="+bppSet.filterGmPerCC);
-				IJ.log("kv="+bppSet.kv);
-				IJ.log("ma="+bppSet.ma);
-				IJ.log("minKV="+bppSet.minKV);
-				IJ.log("nBins="+bppSet.nBins);
-				IJ.log("numAng="+bppSet.numAng);
-				IJ.log("pixSizeCM="+bppSet.pixSizeCM);
-				IJ.log("target="+bppSet.target);				
-				DoRoutine(bppSet);
-				ser.SaveObjectAsSerialized(bppSet, settingsPath);
-			}
-		}
-	}
-	
-	//*******************************************************************************
-
-	private ParallelProjectors.BremParallelParams getDialogDefaultSettings()
-	{
-		ParallelProjectors.BremParallelParams dlogSet = new ParallelProjectors.BremParallelParams();
-		dlogSet.target = "W";
-		dlogSet.kv = 160;
-		dlogSet.ma = 100;
-		dlogSet.nBins = 20;
-		dlogSet.minKV = 20;
-
-		dlogSet.filter = "Cu";
-		dlogSet.filterCM = 0.1f;
-		dlogSet.filterGmPerCC = 8.41;
-
-		//Tagged Image
-		
-		dlogSet.pixSizeCM=imageImp.getCalibration().pixelWidth;		
-		//convert Default tag data to arrays
-		int[] tag =  mlt.getTagSetMatlTagAsArray(tagSet);//new int[tagSet.tagData.size()];
-		String[] name =  mlt.getTagSetMatlNamesAsArray(tagSet);//new String[tagSet.tagData.size()];
-		String[] formula =  mlt.getTagSetMatlFormulasAsArray(tagSet);//new String[tagSet.tagData.size()];
-		double[] gmPerCC =  mlt.getTagSetMatlGmPerccAsArray(tagSet);//new double[tagSet.tagData.size()];
-//		int i=0;
-//		for(MatlListTools.TagData td : tagSet.tagData)
-//		{
-//			tag[i] = td.matlTag;
-//			name[i] = td.matlName;
-//			formula[i] = td.matlFormula;
-//			gmPerCC[i] = td.matlGmPerCC;
-//			i++;
-//		}
-
-		dlogSet.matlTag=tag;
-		dlogSet.matlName=name;
-		dlogSet.matlFormula=formula;
-		dlogSet.matlGmPerCC=gmPerCC;
-		
-		//CT params
-		dlogSet.numAng=(int)(0.5*Math.PI*imageImp.getWidth());
-		padImage=false;
-
-		//Detector
-		dlogSet.detFormula="Cs:1:I:1";
-		dlogSet.detCM=.01;
-		dlogSet.detGmPerCC=8.41;		
-		scale16=false;
-		
-		return dlogSet;		
-	}
-
-	//*******************************************************************************
 	//Some of these are not be used
 //	ChoiceField srcTargetCF;
 //	NumericField srcAccelVoltsNF,srcMilliAmpsNF,srcKevBinsNF,srcKevMinNF;	
@@ -258,17 +118,103 @@ public class Tag_Image_To_Parallel_Brems_Sinogram implements PlugInFilter , Dial
 	StringField detFormulaSF;
 	ChoiceField padOptionsCF,detMaterialCF;
 //	CheckboxField scale16CBF;
-	
 	NumericField detPixCntNF;
 	NumericField scaleFactorNF;	
 	NumericField numAnglesNF;
 	
+	public boolean dialogItemChanged(GenericDialog gd, AWTEvent e)
+	{
+		boolean dialogOK = true;
+		if(e!=null)
+		{
+			getSelections(gd);
+			Object src = e.getSource();
+			
+			if(src instanceof Checkbox)
+			{
+				Checkbox cb = (Checkbox)src;
+				switch(cb.getName())
+				{
+				case "scale16":
+					break;
+				}
+				
+			}			
+			else if(src instanceof TextField)
+			{
+				TextField tf= (TextField)src;
+				String name = tf.getName();
+				switch(name)
+				{
+				case "detPixCnt":
+					detPixCnt = (int) detPixCntNF.getNumber();
+					if(detPixCnt > originalWidth)
+					{
+						int numAngles = (int) (Math.ceil(Math.PI*detPixCnt/2));
+						//make numAngles even
+						if ((numAngles ^ 1) == numAngles - 1)	numAngles++;	
+						numAnglesNF.setNumber(numAngles);
+					}
+					else dialogOK=false;
+					break;
+				}				
+			}
+			else if(src instanceof Choice)
+			{
+				Choice choice = (Choice) src;
+				String name = choice.getName();
+				switch(name)
+				{
+				case "padOptions":
+					String option = choice.getSelectedItem();
+					int numAngles=0;
+					switch(option)
+					{
+					case "None":
+						detPixCnt = originalWidth;
+						detPixCntNF.setNumber(detPixCnt);
+						numAngles = (int) (Math.ceil(Math.PI*detPixCnt/2));
+						break;
+					case "Circumscribed":
+						detPixCnt = (int) (Math.ceil(Math.sqrt(2*originalWidth*originalWidth)));
+						detPixCntNF.setNumber(detPixCnt);
+						numAngles = (int) (Math.ceil(Math.PI*detPixCnt/2));
+						break;
+					case "Next Power of 2":
+						detPixCnt = 0;
+						for(int i=0;i< 10;i++)
+						{
+							detPixCnt =(int) Math.pow(2, i);
+							if(detPixCnt>originalWidth) break;
+						}				
+						detPixCntNF.setNumber(detPixCnt);
+						numAngles = (int) (Math.ceil(Math.PI*detPixCnt));
+						break;
+					case "Custom":
+						break;
+					}
+					//make numAngles even
+					if ((numAngles ^ 1) == numAngles - 1)	numAngles++;	
+					numAnglesNF.setNumber(numAngles);
+					break;
+				case "detectorMaterial":
+					int index = detMaterialCF.getChoice().getSelectedIndex();
+					detFormulaSF.getTextField().setText(bppSet.matlFormula[index]);
+					detDensityNF.setNumber(bppSet.matlGmPerCC[index]);					
+					break;
+				}
+			}
+
+		}
+		getSelections(gd);
+		
+		return dialogOK;
+	}
+	
+	//*******************************************************************************
+
 	private boolean DoDialog()
 	{
-		//String dir = IJ.getDirectory("plugins");
-		dir= dir.replace("\\","/");
-		//String myURL = "file:///" + dir + "jars/MuMassCalculatorDocs/index.html";
-
 		int detPixCnt= imageImp.getWidth();
 
 		gd.addDialogListener(this);
@@ -357,78 +303,6 @@ public class Tag_Image_To_Parallel_Brems_Sinogram implements PlugInFilter , Dial
 		}	
 	}
 	
-	//*******************************************************************************
-
-	private void getSelections(GenericDialog gd)
-	{
-		//GenericDialog.getNext... calls are required for macro recording
-		//They depend on the ordering of the Dialog components
-		//Rearranging the Dialog components breaks this code
-		gd.resetCounters();
-		bppSet.numAng = (int)gd.getNextNumber();
-		String padOption = gd.getNextChoice();
-		detPixCnt = (int) gd.getNextNumber();
-		
-		bppSet.target = gd.getNextChoice();
-		bppSet.kv = gd.getNextNumber();
-		bppSet.ma = gd.getNextNumber();
-		bppSet.nBins = (int)gd.getNextNumber();
-		bppSet.minKV = gd.getNextNumber();
-		bppSet.filter = gd.getNextChoice();
-		bppSet.filterCM = gd.getNextNumber();
-		bppSet.detFormula = gd.getNextString();
-		bppSet.detCM = gd.getNextNumber();
-		bppSet.detGmPerCC =  gd.getNextNumber();
-		scale16 = gd.getNextBoolean();
-		scaleFactor =  gd.getNextNumber();
-	}
-	
-	//*******************************************************************************
-
-	private boolean ValidateParams(ParallelProjectors.BremParallelParams bppSet)
-	{
-		//Test the formulas
-		ArrayList<AtomData> formula;
-
-		//Pre-screen the formulas for correctness
-		formula = mmc.createFormulaList(bppSet.target);
-		if(formula==null) {IJ.error(bppSet.target + " Is not a valid target material"); return false;}
-		formula = mmc.createFormulaList(bppSet.filter);
-		if(formula==null) {IJ.error(bppSet.filter + " Is not a valid filter material"); return false;}
-		
-		if(bppSet.matlFormula==null){IJ.error("Missing Formulas"); return false;}
-		if(bppSet.matlGmPerCC==null){IJ.error("Missing Densities"); return false;}
-		
-		for(int i=1;i< bppSet.matlFormula.length;i++)
-		{
-			if(bppSet.matlGmPerCC[i] < 0){IJ.error("Material 1 Density " + bppSet.matlGmPerCC[i] + " Cannot be negative"); return false;}
-			if(bppSet.matlFormula[i] == null){IJ.error("Missing Formula at item " + i); return false;}
-			formula = mmc.createFormulaList(bppSet.matlFormula[i]);
-			if(formula==null) {IJ.error(bppSet.matlFormula[i] + " Is not a valid  material"); return false;}			
-		}
-		
-		formula = mmc.createFormulaList(bppSet.detFormula);
-		if(formula==null) {IJ.error(bppSet.detFormula + " Is not a valid detector material"); return false;}
-		
-		//Test the numbers
-		if(bppSet.kv < bppSet.minKV){IJ.error("Source KV " + bppSet.kv + " Must be greater than " + bppSet.minKV + "KV"); return false;}
-		if(bppSet.kv <=0){IJ.error("Source KV " + bppSet.kv + " Must be greater than 0 KV"); return false;}
-		if(bppSet.ma <=0){IJ.error("Source mA " + bppSet.ma + " Must be greater than 0 mA"); return false;}
-		if(bppSet.nBins <=0){IJ.error("Bin Count " + bppSet.nBins + " Must be greater than 0"); return false;}
-		if(bppSet.minKV > bppSet.kv){IJ.error("Source minMV " + bppSet.minKV + " Must be less than " + bppSet.kv + "KV"); return false;}
-		
-		if(bppSet.filterCM < 0){IJ.error("Filter Thickness " + bppSet.filterCM + " Cannot be negative"); return false;}
-		if(bppSet.filterGmPerCC <= 0){IJ.error("Filter Density " + bppSet.filterGmPerCC + " Cannot be negative"); return false;}
-		
-		if(bppSet.numAng < 1){IJ.error("Number of angles " + bppSet.numAng + " Cannot be negative or zero"); return false;}
-		if(bppSet.detCM <= 0){IJ.error("Detector Thickness " + bppSet.detCM + " Cannot be negative"); return false;}
-		if(bppSet.detGmPerCC <= 0){IJ.error("Detector Densith " + bppSet.detCM + " Cannot be negative or zero"); return false;}
-		
-		return true;
-	}
-	
-	//*******************************************************************************
-
 	private void DoRoutine(ParallelProjectors.BremParallelParams bppSet)
 	{
 		if(imageImp.getBitDepth() == 32)
@@ -543,107 +417,205 @@ public class Tag_Image_To_Parallel_Brems_Sinogram implements PlugInFilter , Dial
 	
 	//*******************************************************************************
 
-	public static boolean isNumeric(String str)
-	{ 
-		try
-		{  
-			Double.parseDouble(str);  
-			return true;
+	private ParallelProjectors.BremParallelParams getDialogDefaultSettings()
+	{
+		ParallelProjectors.BremParallelParams dlogSet = new ParallelProjectors.BremParallelParams();
+		dlogSet.target = "W";
+		dlogSet.kv = 160;
+		dlogSet.ma = 100;
+		dlogSet.nBins = 20;
+		dlogSet.minKV = 20;
+
+		dlogSet.filter = "Cu";
+		dlogSet.filterCM = 0.1f;
+		dlogSet.filterGmPerCC = 8.41;
+
+		//Tagged Image
+		
+		dlogSet.pixSizeCM=imageImp.getCalibration().pixelWidth;		
+		//convert Default tag data to arrays
+		int[] tag =  mlt.getTagSetMatlTagAsArray(tagSet);//new int[tagSet.tagData.size()];
+		String[] name =  mlt.getTagSetMatlNamesAsArray(tagSet);//new String[tagSet.tagData.size()];
+		String[] formula =  mlt.getTagSetMatlFormulasAsArray(tagSet);//new String[tagSet.tagData.size()];
+		double[] gmPerCC =  mlt.getTagSetMatlGmPerccAsArray(tagSet);//new double[tagSet.tagData.size()];
+
+		dlogSet.matlTag=tag;
+		dlogSet.matlName=name;
+		dlogSet.matlFormula=formula;
+		dlogSet.matlGmPerCC=gmPerCC;
+		
+		//CT params
+		dlogSet.numAng=(int)(0.5*Math.PI*imageImp.getWidth());
+
+		//Detector
+		dlogSet.detFormula="Cs:1:I:1";
+		dlogSet.detCM=.01;
+		dlogSet.detGmPerCC=8.41;		
+		scale16=false;
+		
+		return dlogSet;		
+	}
+	
+	//*******************************************************************************
+
+	private void getSelections(GenericDialog gd)
+	{
+		//GenericDialog.getNext... calls are required for macro recording
+		//They depend on the ordering of the Dialog components
+		//Rearranging the Dialog components breaks this code
+		gd.resetCounters();
+		bppSet.numAng = (int)gd.getNextNumber();
+		String padOption = gd.getNextChoice();
+		detPixCnt = (int) gd.getNextNumber();
+		bppSet.pixSizeCM = pixelSize;
+		bppSet.target = gd.getNextChoice();
+		bppSet.kv = gd.getNextNumber();
+		bppSet.ma = gd.getNextNumber();
+		bppSet.nBins = (int)gd.getNextNumber();
+		bppSet.minKV = gd.getNextNumber();
+		bppSet.filter = gd.getNextChoice();
+		bppSet.filterCM = gd.getNextNumber();
+		bppSet.detFormula = gd.getNextString();
+		bppSet.detCM = gd.getNextNumber();
+		bppSet.detGmPerCC =  gd.getNextNumber();
+		scale16 = gd.getNextBoolean();
+		scaleFactor =  gd.getNextNumber();
+	}
+	
+	//*******************************************************************************
+
+	@Override
+	public void run(ImageProcessor ip)
+	{		
+		if(IJ.versionLessThan("1.53u"))// GenericDialog.resetCounters()
+		{
+			IJ.showMessage("ImageJ version 1.53u or better required.");
+			return;
 		}
-		catch(NumberFormatException e)
-		{  
-			return false;  
-		}  
+		
+		//Sort the element arrays
+		Arrays.sort(targetSymb);
+		Arrays.sort(filterSymb);
+		
+		//the original image width and height
+		originalWidth =ip.getWidth();
+		originalHeight =ip.getHeight();
+		if(originalHeight != originalWidth)
+		{
+			IJ.showMessage("Image must be Square. Check the PadImage Box in the next dialog");
+		}
+		Calibration cal = imageImp.getCalibration();
+		unit = cal.getUnit().toUpperCase();
+		if(!unit.equals("CM"))
+		{
+			IJ.error("Input image pixel units must be in cm (centimeters)");
+			return;
+		}		
+		if(cal.pixelWidth != cal.pixelHeight)
+		{
+			IJ.showMessage("Pixel width and height must be the same.");
+			return;
+		}
+		
+		pixelSize = cal.pixelWidth;
+
+		tagSet = mlt.loadTagFile(tagSetPath);
+		if(tagSet==null)
+		{
+			IJ.error("The Materials tagSet failed to load\n"
+					+ "Please locate or create \"DefaultMaterials.csv\"\n"
+					+ "and place it in the plugins/DialogData folder");
+			return;
+		}
+				
+		//Read the saved dialog settings
+		bppSet = (ParallelProjectors.BremParallelParams)ser.ReadSerializedObject(settingsPath);
+		
+		if(bppSet==null)
+		{
+			bppSet = getDialogDefaultSettings();
+		}
+		else // the DefaultMaterials.csv file may have been modified since previous plugin run
+		{
+			bppSet.matlFormula = mlt.getTagSetMatlFormulasAsArray(tagSet);
+			bppSet.matlGmPerCC = mlt.getTagSetMatlGmPerccAsArray(tagSet);
+			bppSet.matlName = mlt.getTagSetMatlNamesAsArray(tagSet);
+			bppSet.matlTag = mlt.getTagSetMatlTagAsArray(tagSet);
+		}
+
+		if(DoDialog())
+		{
+			if(ValidateParams(bppSet))
+			{
+//				IJ.log("detCM="+bppSet.detCM);
+//				IJ.log("detFormula="+bppSet.detFormula);
+//				IJ.log("detGmPerCC="+bppSet.detGmPerCC);
+//				IJ.log("filter="+bppSet.filter);
+//				IJ.log("filterCM="+bppSet.filterCM);
+//				IJ.log("filterGmPerCC="+bppSet.filterGmPerCC);
+//				IJ.log("kv="+bppSet.kv);
+//				IJ.log("ma="+bppSet.ma);
+//				IJ.log("minKV="+bppSet.minKV);
+//				IJ.log("nBins="+bppSet.nBins);
+//				IJ.log("numAng="+bppSet.numAng);
+//				IJ.log("pixSizeCM="+bppSet.pixSizeCM);
+//				IJ.log("target="+bppSet.target);				
+				DoRoutine(bppSet);
+				ser.SaveObjectAsSerialized(bppSet, settingsPath);
+			}
+		}
+	}
+	
+	//*******************************************************************************
+
+	@Override
+	public int setup(String arg, ImagePlus imp)
+	{
+		this.imageImp = imp;
+		return DOES_32;
 	}
 
 	//*******************************************************************************
 	
-	public boolean dialogItemChanged(GenericDialog gd, AWTEvent e)
+	private boolean ValidateParams(ParallelProjectors.BremParallelParams bppSet)
 	{
-		boolean dialogOK = true;
-		if(e!=null)
-		{
-			getSelections(gd);
-			Object src = e.getSource();
-			
-			if(src instanceof Checkbox)
-			{
-				Checkbox cb = (Checkbox)src;
-				switch(cb.getName())
-				{
-				case "scale16":
-					break;
-				}
-				
-			}			
-			else if(src instanceof TextField)
-			{
-				TextField tf= (TextField)src;
-				String name = tf.getName();
-				switch(name)
-				{
-				case "detPixCnt":
-					detPixCnt = (int) detPixCntNF.getNumber();
-					if(detPixCnt > originalWidth)
-					{
-						int numAngles = (int) (Math.ceil(Math.PI*detPixCnt/2));
-						//make numAngles even
-						if ((numAngles ^ 1) == numAngles - 1)	numAngles++;	
-						numAnglesNF.setNumber(numAngles);
-					}
-					else dialogOK=false;
-					break;
-				}				
-			}
-			else if(src instanceof Choice)
-			{
-				Choice choice = (Choice) src;
-				String name = choice.getName();
-				switch(name)
-				{
-				case "padOptions":
-					String option = choice.getSelectedItem();
-					int numAngles=0;
-					switch(option)
-					{
-					case "None":
-						detPixCnt = originalWidth;
-						detPixCntNF.setNumber(detPixCnt);
-						numAngles = (int) (Math.ceil(Math.PI*detPixCnt/2));
-						break;
-					case "Circumscribed":
-						detPixCnt = (int) (Math.ceil(Math.sqrt(2*originalWidth*originalWidth)));
-						detPixCntNF.setNumber(detPixCnt);
-						numAngles = (int) (Math.ceil(Math.PI*detPixCnt/2));
-						break;
-					case "Next Power of 2":
-						detPixCnt = 0;
-						for(int i=0;i< 10;i++)
-						{
-							detPixCnt =(int) Math.pow(2, i);
-							if(detPixCnt>originalWidth) break;
-						}				
-						detPixCntNF.setNumber(detPixCnt);
-						numAngles = (int) (Math.ceil(Math.PI*detPixCnt));
-						break;
-					case "Custom":
-						break;
-					}
-					//make numAngles even
-					if ((numAngles ^ 1) == numAngles - 1)	numAngles++;	
-					numAnglesNF.setNumber(numAngles);
-					break;
-				case "detectorMaterial":
-					int index = detMaterialCF.getChoice().getSelectedIndex();
-					detFormulaSF.getTextField().setText(bppSet.matlFormula[index]);
-					detDensityNF.setNumber(bppSet.matlGmPerCC[index]);					
-					break;
-				}
-			}
+		//Test the formulas
+		ArrayList<AtomData> formula;
 
-		}
-		getSelections(gd);
+		//Pre-screen the formulas for correctness
+		formula = mmc.createFormulaList(bppSet.target);
+		if(formula==null) {IJ.error(bppSet.target + " Is not a valid target material"); return false;}
+		formula = mmc.createFormulaList(bppSet.filter);
+		if(formula==null) {IJ.error(bppSet.filter + " Is not a valid filter material"); return false;}
 		
-		return dialogOK;
+		if(bppSet.matlFormula==null){IJ.error("Missing Formulas"); return false;}
+		if(bppSet.matlGmPerCC==null){IJ.error("Missing Densities"); return false;}
+		
+		for(int i=1;i< bppSet.matlFormula.length;i++)
+		{
+			if(bppSet.matlGmPerCC[i] < 0){IJ.error("Material 1 Density " + bppSet.matlGmPerCC[i] + " Cannot be negative"); return false;}
+			if(bppSet.matlFormula[i] == null){IJ.error("Missing Formula at item " + i); return false;}
+			formula = mmc.createFormulaList(bppSet.matlFormula[i]);
+			if(formula==null) {IJ.error(bppSet.matlFormula[i] + " Is not a valid  material"); return false;}			
+		}
+		
+		formula = mmc.createFormulaList(bppSet.detFormula);
+		if(formula==null) {IJ.error(bppSet.detFormula + " Is not a valid detector material"); return false;}
+		
+		//Test the numbers
+		if(bppSet.kv < bppSet.minKV){IJ.error("Source KV " + bppSet.kv + " Must be greater than " + bppSet.minKV + "KV"); return false;}
+		if(bppSet.kv <=0){IJ.error("Source KV " + bppSet.kv + " Must be greater than 0 KV"); return false;}
+		if(bppSet.ma <=0){IJ.error("Source mA " + bppSet.ma + " Must be greater than 0 mA"); return false;}
+		if(bppSet.nBins <=0){IJ.error("Bin Count " + bppSet.nBins + " Must be greater than 0"); return false;}
+		if(bppSet.minKV > bppSet.kv){IJ.error("Source minMV " + bppSet.minKV + " Must be less than " + bppSet.kv + "KV"); return false;}
+		
+		if(bppSet.filterCM < 0){IJ.error("Filter Thickness " + bppSet.filterCM + " Cannot be negative"); return false;}
+		if(bppSet.filterGmPerCC <= 0){IJ.error("Filter Density " + bppSet.filterGmPerCC + " Cannot be negative"); return false;}
+		
+		if(bppSet.numAng < 1){IJ.error("Number of angles " + bppSet.numAng + " Cannot be negative or zero"); return false;}
+		if(bppSet.detCM <= 0){IJ.error("Detector Thickness " + bppSet.detCM + " Cannot be negative"); return false;}
+		if(bppSet.detGmPerCC <= 0){IJ.error("Detector Densith " + bppSet.detCM + " Cannot be negative or zero"); return false;}
+		
+		return true;
 	}
 }

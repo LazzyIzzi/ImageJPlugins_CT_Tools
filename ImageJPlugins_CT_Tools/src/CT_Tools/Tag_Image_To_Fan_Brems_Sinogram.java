@@ -70,39 +70,43 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 {
 	final String myDialogTitle = "Polychromatic Fan Beam CTscan";	
 	final String mySettingsTitle = "Polychromatic_FanBeam_Params";
-	
+
 	//Used to test formulas prior to launching the simulator
 	MuMassCalculator mmc = new MuMassCalculator();
-	
+
 	//The class that does fan projection
 	FanProjectors fanPrj = new FanProjectors();
-	
+
 	//The nested class containing the simulator's user supplied parameters
 	FanProjectors.BremFanParams bfpSet =  new FanProjectors.BremFanParams();	
-	
+
 	//The class used to serialize (save) the users selections
 	Serializer ser = new Serializer();
-	
+
 	//The class used to manage materials Lists
 	MatlListTools mlt=new MatlListTools();
-	
+
 	//The nested class containing  materials list tag information
 	MatlListTools.TagSet tagSet;
-	
+
 	//the full path to the default tagSet file
 	String tagSetPath =  IJ.getDirectory("plugins") + "DialogData\\DefaultMaterials.csv";
-	
+
 	//The ImageJ GenericDialog class
 	GenericDialog gd = new GenericDialog(myDialogTitle);
-	
 	//Addins to make referencing the dialog's components much simpler
 	GenericDialogAddin gda = new GenericDialogAddin();
-	
+
 	//Arrays to unpack Text file materials lists
 	String[] matlArr;	
 	String[] formula;
 	double[] gmPerCC;
-	
+
+	String[] targetSymb = Arrays.copyOf(mmc.getAtomSymbols(),mmc.getAtomSymbols().length); //{"Ag","Au","Cr","Cu","Mo","Rh","W"};
+	String[] filterSymb = Arrays.copyOf(mmc.getAtomSymbols(),mmc.getAtomSymbols().length); //{"Ag","Al","Cu","Er","Mo","Nb","Rh","Ta"};
+
+	final String[] padOptions = {"None","Circumscribed", "Next Power of 2"};
+
 	//GLOBALS
 	boolean scale16;
 	ImagePlus imageImp;
@@ -111,15 +115,23 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 	double pixelSize;
 	String unit;
 	double scaleFactor=6000;
-	
+
 	//the full path to the dialog settings
 	String settingsPath = IJ.getDirectory("plugins") + "DialogSettings" + File.separator + mySettingsTitle + ".ser";
-		
+
 	final Color myColor = new Color(240,230,190);//slightly darker than buff
 	Font myFont = new Font(Font.DIALOG, Font.BOLD, 12);
-		
+
+	ChoiceField padOptionsCF,detMaterialCF;
+	NumericField detPixCntNF,detDensityNF;
+	NumericField scaleFactorNF;
+	NumericField numAnglesNF;
+	NumericField magnificationNF;
+	NumericField srcToDetNF;
+	MessageField axisToDetMF,detMinCntMF,paddedWidthMF;	
+	StringField detFormulaSF;
 	
-	//*******************************************************************************
+	//*******************************************************************************	
 	
 	public boolean dialogItemChanged(GenericDialog gd, AWTEvent e)
 	{
@@ -131,12 +143,12 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 		int numAngles;	
 		String padChoice;
 		boolean dialogOK = true;
-		
+
 		if(e!=null)
 		{
 			//getSelections(gd);
 			Object src = e.getSource();
-			
+
 			if(src instanceof Checkbox)
 			{
 				Checkbox cb = (Checkbox)src;
@@ -145,7 +157,7 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 				case "scale16":
 					break;
 				}
-				
+
 			}			
 			else if(src instanceof TextField)
 			{
@@ -167,7 +179,7 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 					detPixCntNF.setNumber(detMinCnt);					
 					detMinCntMF.getLabel().setText("Minimum Detector Width = " + detMinCnt + " pixels");				
 					paddedWidthMF.getLabel().setText("Padded Image Width = " + paddedWidth + " pixels");
-					case "detPixCnt":
+				case "detPixCnt":
 					detPixCnt = (int) detPixCntNF.getNumber();
 					if(detPixCnt > originalWidth)
 					{
@@ -207,38 +219,14 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 
 		}
 		getSelections(gd);
-		
+
 		return dialogOK;
 	}
-
+	
 	//*******************************************************************************
-	ChoiceField padOptionsCF,detMaterialCF;
-	NumericField detPixCntNF,detDensityNF;
-	NumericField scaleFactorNF;
-	NumericField numAnglesNF;
-	NumericField magnificationNF;
-	NumericField srcToDetNF;	
-	MessageField axisToDetMF,detMinCntMF,paddedWidthMF;
-	StringField detFormulaSF;
 
 	private boolean doDialog()
 	{
-		//String dir = IJ.getDirectory("plugins");
-		//dir= dir.replace("\\","/");
-		//String myURL = "file:///" + dir + "jars/MuMassCalculatorDocs/index.html";
-
-//		final String[] targetSymb = {"Ag","Au","Cr","Cu","Mo","Rh","W"};
-//		final String[] filterSymb = {"Ag","Al","Cu","Er","Mo","Nb","Rh","Ta"};
-		
-		String[] targetSymb = Arrays.copyOf(mmc.getAtomSymbols(),mmc.getAtomSymbols().length); //{"Ag","Au","Cr","Cu","Mo","Rh","W"};
-		String[] filterSymb = Arrays.copyOf(mmc.getAtomSymbols(),mmc.getAtomSymbols().length); //{"Ag","Al","Cu","Er","Mo","Nb","Rh","Ta"};
-		//Sort the element arrays
-		Arrays.sort(targetSymb);
-		Arrays.sort(filterSymb);
-		
-		final String[] padOptions = {"None","Circumscribed", "Next Power of 2"};
-
-		//srcToSampCM is presented for user information
 		double srcToSampCM = bfpSet.srcToDetCM/bfpSet.magnification;		
 		String padChoice = padOptions[0];
 		int detMinCnt = getMinDetCnt(originalWidth,bfpSet.magnification,padChoice);
@@ -250,7 +238,7 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 		gd.setInsets(10,0,0);
 		gd.addMessage("360 degree Scan______________",myFont,Color.BLACK);
 		gd.setInsets(10,0,0);
-		
+
 		if ((bfpSet.numAng ^ 1) == bfpSet.numAng - 1)	bfpSet.numAng++;			
 		gd.addNumericField("Suggested_View_Angles", bfpSet.numAng);
 		numAnglesNF = gda.getNumericField(gd, null, "numAngles");
@@ -278,13 +266,13 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 		gd.addNumericField("mA", bfpSet.ma);
 		gd.addNumericField("KeV Bins", bfpSet.nBins);
 		gd.addNumericField("Min KeV", bfpSet.minKV);
-		
+
 		//Filter
 		gd.setInsets(10,0,0);
 		gd.addMessage("Source Filter________________",myFont,Color.BLACK);
 		gd.addChoice("Material",filterSymb,bfpSet.filter);
 		gd.addNumericField("Thickness(cm)", bfpSet.filterCM);
-		
+
 		//Detector
 		gd.setInsets(10,0,0);
 		gd.addMessage("Detector___________________",myFont,Color.BLACK);
@@ -310,7 +298,7 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 		detDensityNF = gda.getNumericField(gd, null, "detDensity");
 		gd.addCheckbox("Scale to 16-bit proj", scale16);
 		gd.addNumericField("Scale Factor", scaleFactor);
-		
+
 		//gd.addCheckbox("Pad Image", padImage);
 		gd.addHelp("https://lazzyizzi.github.io/CTsimulator.html");
 		gd.setBackground(myColor);
@@ -326,7 +314,7 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 			return true;
 		}	
 	}
-	
+
 	//*******************************************************************************
 
 	private void doRoutine(FanProjectors.BremFanParams bfpSet)
@@ -336,7 +324,7 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 		ImagePlus sinoImp;				
 		Object image;		
 		CanvasResizer resizer= new CanvasResizer();
-		
+
 		int nslices = imageImp.getNSlices();
 
 		ArrayList<float[]> sinograms = new ArrayList<float[]>();
@@ -447,25 +435,25 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 		sinoImp.setSlice(1);
 		sinoImp.show();			
 	}
-	
+
 	//Compute minimum detPixCnt, srcToSampCM,sampToDetCM and numAngles
 	//from 
-//	private double getMag(double axisToDet,double srcToDet)
-//	{
-//		return srcToDet/(srcToDet-axisToDet);
-//	}
+	//	private double getMag(double axisToDet,double srcToDet)
+	//	{
+	//		return srcToDet/(srcToDet-axisToDet);
+	//	}
 	private double getAxisToDet(double mag, double srcToDet)
 	{
 		return srcToDet*(1-1/mag);
 	}
-//	private double getSrcToSamp(double mag, double srcToDet)
-//	{
-//		return srcToDet/mag;
-//	}
-//	private double getSrcToDet(double mag, double srcToSamp)
-//	{
-//		return mag*srcToSamp;
-//	}
+	//	private double getSrcToSamp(double mag, double srcToDet)
+	//	{
+	//		return srcToDet/mag;
+	//	}
+	//	private double getSrcToDet(double mag, double srcToSamp)
+	//	{
+	//		return mag*srcToSamp;
+	//	}
 	//*******************************************************************************
 
 	private FanProjectors.BremFanParams getDialogDefaultSettings()
@@ -484,20 +472,11 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 		//Tagged Image
 		dlogSet.pixSizeCM=imageImp.getCalibration().pixelWidth;		
 		//convert Default tag data to arrays
-		int[] tag = new int[tagSet.tagData.size()];
-		String[] name =  new String[tagSet.tagData.size()];
-		String[] formula =  new String[tagSet.tagData.size()];
-		double[] gmPerCC =  new double[tagSet.tagData.size()];
-		int i=0;
-		for(MatlListTools.TagData td : tagSet.tagData)
-		{
-			tag[i] = td.matlTag;
-			name[i] = td.matlName;
-			formula[i] = td.matlFormula;
-			gmPerCC[i] = td.matlGmPerCC;
-			i++;
-		}
-		
+		int[] tag =  mlt.getTagSetMatlTagAsArray(tagSet);//new int[tagSet.tagData.size()];
+		String[] name =  mlt.getTagSetMatlNamesAsArray(tagSet);//new String[tagSet.tagData.size()];
+		String[] formula =  mlt.getTagSetMatlFormulasAsArray(tagSet);//new String[tagSet.tagData.size()];
+		double[] gmPerCC =  mlt.getTagSetMatlGmPerccAsArray(tagSet);//new double[tagSet.tagData.size()];
+
 		dlogSet.matlTag=tag;
 		dlogSet.matlName=name;
 		dlogSet.matlFormula=formula;
@@ -513,10 +492,10 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 		dlogSet.detCM=.01;
 		dlogSet.detGmPerCC=8.41;		
 		scale16=false;
-		
+
 		return dlogSet;		
 	}
-	
+
 	//*******************************************************************************
 
 	/**
@@ -566,35 +545,36 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 	//*******************************************************************************
 
 	private void getSelections(GenericDialog gd)
-{
-	//GenericDialog.getNext... calls are required for macro recording
-	//They depend on the ordering of the Dialog components
-	//Rearranging the Dialog components breaks this code
-	gd.resetCounters();
+	{
+		//GenericDialog.getNext... calls are required for macro recording
+		//They depend on the ordering of the Dialog components
+		//Rearranging the Dialog components breaks this code
+		gd.resetCounters();
 
-	bfpSet.numAng = (int)gd.getNextNumber();
-	bfpSet.pixSizeCM = imageImp.getCalibration().pixelWidth;
-	String padOption = gd.getNextChoice();	
-	double mag = magnificationNF.getNumber();
-	paddedWidth =(int)(gd.getNextNumber()/mag);
-	bfpSet.srcToDetCM = (float)gd.getNextNumber();
-	bfpSet.magnification = (float)gd.getNextNumber();
-	bfpSet.target = gd.getNextChoice();
-	bfpSet.kv = (float)gd.getNextNumber();
-	bfpSet.ma =	(float)gd.getNextNumber();
-	bfpSet.nBins = (int)gd.getNextNumber();
-	bfpSet.minKV =(float)gd.getNextNumber();
-	bfpSet.filter = gd.getNextChoice();
-	bfpSet.filterCM = (float)gd.getNextNumber();		
-	bfpSet.filterGmPerCC = mmc.getAtomGmPerCC(bfpSet.filter);		
-	bfpSet.detFormula = gd.getNextString();
-	bfpSet.detCM = 	(float)gd.getNextNumber();
-	bfpSet.detGmPerCC =	(float)gd.getNextNumber();
-	scale16= gd.getNextBoolean();
-	scaleFactor =gd.getNextNumber();
-}
-	
+		bfpSet.numAng = (int)gd.getNextNumber();
+		bfpSet.pixSizeCM = pixelSize;
+		String padOption = gd.getNextChoice();	
+		double mag = magnificationNF.getNumber();
+		paddedWidth =(int)(gd.getNextNumber()/mag);
+		bfpSet.srcToDetCM = (float)gd.getNextNumber();
+		bfpSet.magnification = (float)gd.getNextNumber();
+		bfpSet.target = gd.getNextChoice();
+		bfpSet.kv = (float)gd.getNextNumber();
+		bfpSet.ma =	(float)gd.getNextNumber();
+		bfpSet.nBins = (int)gd.getNextNumber();
+		bfpSet.minKV =(float)gd.getNextNumber();
+		bfpSet.filter = gd.getNextChoice();
+		bfpSet.filterCM = (float)gd.getNextNumber();		
+		bfpSet.filterGmPerCC = mmc.getAtomGmPerCC(bfpSet.filter);		
+		bfpSet.detFormula = gd.getNextString();
+		bfpSet.detCM = 	(float)gd.getNextNumber();
+		bfpSet.detGmPerCC =	(float)gd.getNextNumber();
+		scale16= gd.getNextBoolean();
+		scaleFactor =gd.getNextNumber();
+	}
+
 	//*******************************************************************************
+	
 	@Override
 	public void run(ImageProcessor ip)
 	{
@@ -604,14 +584,18 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 			return;
 		}
 		
+		//Sort the element arrays
+		Arrays.sort(targetSymb);
+		Arrays.sort(filterSymb);
+
 		//the original image width, height, pixelSize and unit
 		originalWidth =ip.getWidth();
 		originalHeight =ip.getHeight();
 		if(originalHeight != originalWidth)
 		{
 			IJ.showMessage("Image must be Square. Check the PadImage Box in the next dialog");
-			return;
 		}
+		
 		Calibration cal = imageImp.getCalibration();
 		unit = cal.getUnit().toUpperCase();
 		if(!unit.equals("CM"))
@@ -624,8 +608,9 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 			IJ.showMessage("Pixel width and height must be the same.");
 			return;
 		}
-		pixelSize = cal.pixelWidth;
 		
+		pixelSize = cal.pixelWidth;
+
 		tagSet = mlt.loadTagFile(tagSetPath);
 
 		//Read the saved dialog settings
@@ -641,7 +626,7 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 			bfpSet.matlName = mlt.getTagSetMatlNamesAsArray(tagSet);
 			bfpSet.matlTag = mlt.getTagSetMatlTagAsArray(tagSet);
 		}
-				
+
 		if(doDialog())
 		{
 			getSelections(gd);
@@ -652,7 +637,7 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 			}
 		}
 	}
-	
+
 	//*******************************************************************************
 
 	@Override
@@ -672,10 +657,10 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 		if(formula==null) {IJ.error(bfpSet.target + " Is not a valid target material"); return false;}
 		formula = mmc.createFormulaList(bfpSet.filter);
 		if(formula==null) {IJ.error(bfpSet.filter + " Is not a valid filter material"); return false;}
-		
+
 		if(bfpSet.matlFormula==null){IJ.error("Missing Formulas"); return false;}
 		if(bfpSet.matlGmPerCC==null){IJ.error("Missing Densities"); return false;}
-		
+
 		for(int i=1;i< bfpSet.matlFormula.length;i++)
 		{
 			if(bfpSet.matlGmPerCC[i] < 0){IJ.error("Material 1 Density " + bfpSet.matlGmPerCC[i] + " Cannot be negative"); return false;}
@@ -683,10 +668,10 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 			formula = mmc.createFormulaList(bfpSet.matlFormula[i]);
 			if(formula==null) {IJ.error(bfpSet.matlFormula[i] + " Is not a valid  material"); return false;}			
 		}
-		
+
 		formula = mmc.createFormulaList(bfpSet.detFormula);
 		if(formula==null) {IJ.error(bfpSet.detFormula + " Is not a valid detector material"); return false;}
-		
+
 		//Test the numbers
 		if(bfpSet.kv < bfpSet.minKV){IJ.error("Source KV " + bfpSet.kv + " Must be greater than " + bfpSet.minKV + "KV"); return false;}
 		if(bfpSet.kv <=0){IJ.error("Source KV " + bfpSet.kv + " Must be greater than 0 KV"); return false;}
@@ -695,11 +680,11 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 		if(bfpSet.minKV > bfpSet.kv){IJ.error("Source minMV " + bfpSet.minKV + " Must be less than " + bfpSet.kv + "KV"); return false;}
 		if(bfpSet.filterCM < 0){IJ.error("Filter Thickness " + bfpSet.filterCM + " Cannot be negative"); return false;}
 		if(bfpSet.filterGmPerCC <= 0){IJ.error("Filter Density " + bfpSet.filterGmPerCC + " Cannot be negative"); return false;}
-		
+
 		if(bfpSet.numAng < 1){IJ.error("Number of angles " + bfpSet.numAng + " Cannot be negative or zero"); return false;}
 		if(bfpSet.detCM <= 0){IJ.error("Detector Thickness " + bfpSet.detCM + " Cannot be negative"); return false;}
 		if(bfpSet.detGmPerCC <= 0){IJ.error("Detector Densith " + bfpSet.detCM + " Cannot be negative or zero"); return false;}
-		
+
 		return true;
 	}
 
