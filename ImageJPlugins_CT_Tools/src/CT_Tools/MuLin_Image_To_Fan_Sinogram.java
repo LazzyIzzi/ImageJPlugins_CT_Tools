@@ -14,6 +14,7 @@ package CT_Tools;
 
 import ij.IJ;
 import ij.ImagePlus;
+import ij.WindowManager;
 import ij.plugin.CanvasResizer;
 import ij.plugin.filter.PlugInFilter;
 import ij.process.*;
@@ -30,30 +31,26 @@ import jhd.Projection.FanProjectors.*;
 public class MuLin_Image_To_Fan_Sinogram implements PlugInFilter, DialogListener
 {
 	final String myDialogTitle = "Fan Beam CTscan";
-	
-	//The class that does fan projection
-	FanProjectors fanPrj = new FanProjectors();
-	
-	//The nested class containing the simulator's user supplied parameters
-	FanParams fpSet =  new FanParams();
-	
-	//The ImageJ GenericDialog class
-	GenericDialog gd;
-	
-	//Globals
-	boolean scale16;
-	ImagePlus imageImp;
-	int originalWidth,originalHeight; //the width and height of the current image
-	int paddedWidth,paddedHeight; //the width and height of the current image after padding with zeros
-	//double pixelSize;
-	String unit;
-	double scaleFactor=6000;
-	
+	final String[] padOptions = {"None","Circumscribed", "Next Power of 2"};
 	final Color myColor = new Color(240,230,190);//slightly darker than buff
 	final Font myFont = new Font(Font.DIALOG, Font.BOLD, 12);
 	
+	//The class that does fan projection
+	FanProjectors fanPrj = new FanProjectors();	
+	//The nested class containing the simulator's user supplied parameters
+	FanParams fpSet =  new FanParams();
 	
-	//For compact event handlers
+	
+	//Globals
+	ImagePlus imageImp;
+	int originalWidth,originalHeight; //the width and height of the current image
+	String padOption;
+	boolean scale16;
+	int paddedWidth,paddedHeight; //the width and height of the current image after padding with zeros
+	double pixelSize,scaleFactor=6000;
+	String unit;
+		
+	GenericDialog gd;
 	GenericDialogAddin gda = new GenericDialogAddin();
 	NumericField numAnglesNF,srcToDetNF,axisToDetNF,magnificationNF,detPixCntNF;
 	MessageField axisToDetMF,detMinCntMF,paddedWidthMF;
@@ -83,12 +80,9 @@ public class MuLin_Image_To_Fan_Sinogram implements PlugInFilter, DialogListener
 			}
 			else if(src instanceof TextField)
 			{
+				padChoice =  padOptionsCF.getChoice().getSelectedItem();				
 				TextField tf = (TextField)src;
 				String name = tf.getName();
-				//In this plugin the source to detector and magnification a user adjustable parameters
-				//The axis to detector distance, detector minimum width and number of views are calculated.				
-				padChoice =  padOptionsCF.getChoice().getSelectedItem();
-				
 				switch(name)
 				{
 				case "magnification":
@@ -161,7 +155,6 @@ public class MuLin_Image_To_Fan_Sinogram implements PlugInFilter, DialogListener
 		double mag,srcToDet;
 		int detMinCnt,numAngles;
 		String padChoice;
-		final String[] padOptions = {"None","Circumscribed", "Next Power of 2"};
 		
 		String dir = IJ.getDirectory("plugins");
 		dir= dir.replace("\\","/");
@@ -226,7 +219,7 @@ public class MuLin_Image_To_Fan_Sinogram implements PlugInFilter, DialogListener
 	private void doRoutine()
 	{		
 		//ImagePlus sinoImp;
-		getSelections();
+		//getSelections();
 		Object image;
 
 
@@ -258,12 +251,20 @@ public class MuLin_Image_To_Fan_Sinogram implements PlugInFilter, DialogListener
 			}
 		}
 
+		String title;
+		String name = imageImp.getTitle();
+		int dotIndex = name.lastIndexOf(".");
+		if(dotIndex != -1) title = name.substring(0, dotIndex);
+		else title  = name;
+		title += "_FanMuLinSino";
+		title = WindowManager.getUniqueName(title);
+
 		int length = sinogram.length;
 		int width = length/fpSet.numAng;   //numAngles;
 		int height = fpSet.numAng;   //numAngles;;
 		if(scale16)
 		{
-			sinoImp = IJ.createImage(myDialogTitle, width, height, nslices, 16);
+			sinoImp = IJ.createImage(title, width, height, nslices, 16);
 			short[] pixels = (short[])sinoImp.getProcessor().getPixels();
 			for(int i=1;i<= nslices;i++)
 			{
@@ -279,7 +280,7 @@ public class MuLin_Image_To_Fan_Sinogram implements PlugInFilter, DialogListener
 		}
 		else
 		{
-			sinoImp = IJ.createImage(myDialogTitle, width, height, nslices, 32);
+			sinoImp = IJ.createImage(title, width, height, nslices, 32);
 			for(int i=1;i<=nslices;i++)
 			{
 				sinoImp.setSlice(i);
@@ -298,14 +299,6 @@ public class MuLin_Image_To_Fan_Sinogram implements PlugInFilter, DialogListener
 		props[6]="Magnification";
 		props[7]=Double.toString(fpSet.magnification);			
 		sinoImp.setProperties(props);
-
-		// append "FanSino" to the image name
-		String title;
-		String name = imageImp.getTitle();
-		int dotIndex = name.lastIndexOf(".");
-		if(dotIndex != -1) title = name.substring(0, dotIndex);
-		else title  = name;           	
-		sinoImp.setTitle(title + "_Mag" + fpSet.magnification + "FanSino" + fpSet.numAng);
 
 		// Set the sinogram X,Y units
 		//The pixel values are in per pixel units
@@ -395,7 +388,10 @@ public class MuLin_Image_To_Fan_Sinogram implements PlugInFilter, DialogListener
 	{
 		gd.resetCounters();
 		fpSet.numAng= (int)gd.getNextNumber();		
-		paddedWidth = (int)(gd.getNextNumber()/fpSet.magnification);
+		fpSet.pixSizeCM=pixelSize;
+		padOption = gd.getNextChoice();
+		double mag = magnificationNF.getNumber();
+		paddedWidth = (int)(gd.getNextNumber()/mag);
 		fpSet.srcToDetCM = (float)gd.getNextNumber();
 		fpSet.magnification=(float)gd.getNextNumber();
 		scale16 = gd.getNextBoolean();
@@ -412,33 +408,31 @@ public class MuLin_Image_To_Fan_Sinogram implements PlugInFilter, DialogListener
 			IJ.showMessage("ImageJ version 1.53u or better required.");
 			return;
 		}
-		unit = imageImp.getCalibration().getUnit().toUpperCase();
-		if(!unit.equals("CM"))
+		
+		//the original image width and height
+		originalWidth =ip.getWidth();
+		originalHeight =ip.getHeight();
+		if(originalHeight != originalWidth)
 		{
-			IJ.error("Input image pixel units must be in cm (centimeters)");
-			return;
+			IJ.showMessage("Image must be Square. Select a padding option in the Dialog.");
 		}
-		if(imageImp.getWidth() != imageImp.getHeight())
-		{
-			IJ.showMessage("Image must be Square. Check the PadImage Box in the next dialog");
-		}
+		
 		Calibration cal = imageImp.getCalibration();
 		unit = cal.getUnit().toUpperCase();
 		if(!unit.equals("CM"))
 		{
 			IJ.error("Input image pixel units must be in cm (centimeters)");
 			return;
-		}		
+		}
+
 		if(cal.pixelWidth != cal.pixelHeight)
 		{
 			IJ.showMessage("Pixel width and height must be the same.");
 			return;
 		}
 		
-		originalWidth =ip.getWidth();
-		originalHeight =ip.getHeight();
-		fpSet.pixSizeCM = cal.pixelWidth;
-		unit = imageImp.getCalibration().getUnit();
+		//fpSet.pixSizeCM = cal.pixelWidth;
+		pixelSize= cal.pixelWidth;
 		
 		if(doMyDialog())
 		{
@@ -463,24 +457,18 @@ public class MuLin_Image_To_Fan_Sinogram implements PlugInFilter, DialogListener
 
 	private boolean validateParams()
 	{
-		if(fpSet.numAng> 1)
+		if(originalWidth!=originalHeight && padOption.equals(padOptions[0]))
 		{
-			return true;
+			IJ.showMessage("Non-square images require a pad option.");
+			return false;
 		}
-		else
+		if(fpSet.numAng<1)
 		{
 			IJ.error("Image To Sinogram Error", "Images must have 1 or more view angles");
 			return false;
 		}
-//		if(fpSet.numAng> 1 && imageImp.getWidth()==imageImp.getHeight())
-//		{
-//			return true;
-//		}
-//		else
-//		{
-//			IJ.error("Image To Sinogram Error", "Images must be square and have 1 or more view angles");
-//			return false;
-//		}
+		
+		return true;
 	}
 	
 }

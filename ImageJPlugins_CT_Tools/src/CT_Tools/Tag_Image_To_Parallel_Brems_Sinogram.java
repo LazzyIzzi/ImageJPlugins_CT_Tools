@@ -24,6 +24,7 @@ package CT_Tools;
 import ij.IJ;
 
 import ij.ImagePlus;
+import ij.WindowManager;
 import ij.plugin.CanvasResizer;
 import ij.plugin.filter.PlugInFilter;
 import ij.process.ImageConverter;
@@ -57,15 +58,17 @@ public class Tag_Image_To_Parallel_Brems_Sinogram implements PlugInFilter , Dial
 {
 	final String myDialogTitle = "Polychromatic Parallel Beam CTscan";	
 	final String mySettingsTitle = "Polychromatic_ParallelBeam_Params";
+	final String[] padOptions = {"None","Circumscribed", "Next Power of 2"};
+	final Color myColor = new Color(240,230,190);//slightly darker than buff
+	final Font myFont = new Font(Font.DIALOG, Font.BOLD, 12);
+	
+	//The methods that do the projections
+	ParallelProjectors parPrj = new ParallelProjectors();		
+	//A serializable class for storing the  user supplied parameters
+	BremParallelParams bppSet = new  BremParallelParams();
 		
 	//Used to test formulas prior to launching the simulator
 	MuMassCalculator mmc = new MuMassCalculator();
-	
-	//The methods that do the projections
-	ParallelProjectors parPrj = new ParallelProjectors();	
-	
-	//A serializable class for storing the  user supplied parameters
-	BremParallelParams bppSet = new  BremParallelParams();
 	
 	//The class used to serialize and save the users selections
 	Serializer ser = new Serializer();
@@ -93,7 +96,7 @@ public class Tag_Image_To_Parallel_Brems_Sinogram implements PlugInFilter , Dial
 	String[] targetSymb = Arrays.copyOf(mmc.getAtomSymbols(),mmc.getAtomSymbols().length); //{"Ag","Au","Cr","Cu","Mo","Rh","W"};
 	String[] filterSymb = Arrays.copyOf(mmc.getAtomSymbols(),mmc.getAtomSymbols().length); //{"Ag","Al","Cu","Er","Mo","Nb","Rh","Ta"};
 
-	final String[] padOptions = {"None","Circumscribed", "Next Power of 2"};
+	String padOption;
 	boolean scale16;//,padImage;
 	ImagePlus imageImp;
 	int originalWidth,originalHeight;
@@ -106,8 +109,6 @@ public class Tag_Image_To_Parallel_Brems_Sinogram implements PlugInFilter , Dial
 	
 	String settingsPath = dir+ "DialogSettings" + File.separator + mySettingsTitle + ".ser";
 
-	final Color myColor = new Color(240,230,190);//slightly darker than buff
-	Font myFont = new Font(Font.DIALOG, Font.BOLD, 12);
 
 	//Some of these are not be used
 //	ChoiceField srcTargetCF;
@@ -176,16 +177,18 @@ public class Tag_Image_To_Parallel_Brems_Sinogram implements PlugInFilter , Dial
 						numAngles = (int) (Math.ceil(Math.PI*detPixCnt/2));
 						break;
 					case "Circumscribed":
-						detPixCnt = (int) (Math.ceil(Math.sqrt(2*originalWidth*originalWidth)));
+						detPixCnt = (int) (Math.ceil(Math.sqrt(originalWidth*originalWidth + originalHeight*originalHeight)));
 						detPixCntNF.setNumber(detPixCnt);
 						numAngles = (int) (Math.ceil(Math.PI*detPixCnt/2));
 						break;
 					case "Next Power of 2":
+						int size = originalWidth;
+						if(originalHeight>size) size = originalHeight;
 						detPixCnt = 0;
 						for(int i=0;i< 10;i++)
 						{
 							detPixCnt =(int) Math.pow(2, i);
-							if(detPixCnt>originalWidth) break;
+							if(detPixCnt>size) break;
 						}				
 						detPixCntNF.setNumber(detPixCnt);
 						numAngles = (int) (Math.ceil(Math.PI*detPixCnt));
@@ -305,114 +308,105 @@ public class Tag_Image_To_Parallel_Brems_Sinogram implements PlugInFilter , Dial
 	
 	private void DoRoutine(ParallelProjectors.BremParallelParams bppSet)
 	{
-		if(imageImp.getBitDepth() == 32)
+		float[] sinogram;
+		ImagePlus sinoImp;
+		ImageProcessor sinoIp;
+		Object image;
+		CanvasResizer resizer= new CanvasResizer();
+
+		int nslices = imageImp.getNSlices();
+
+		String title;
+		String name = imageImp.getTitle();
+		int dotIndex = name.lastIndexOf(".");
+		if(dotIndex != -1) title = name.substring(0, dotIndex);
+		else title  = name;
+		title += "_ParBremSino";
+
+		title = WindowManager.getUniqueName(title);
+
+		if(scale16)sinoImp = IJ.createImage(title, detPixCnt, bppSet.numAng, nslices, 16);				
+		else sinoImp = IJ.createImage(title, detPixCnt, bppSet.numAng, nslices, 32);
+
+		sinoIp = sinoImp.getProcessor();
+
+		for(int i=1;i<=nslices;i++)
 		{
-			float[] sinogram;
-			ImagePlus sinoImp;
-			ImageProcessor sinoIp;
-			Object image;
-			CanvasResizer resizer= new CanvasResizer();
-
-			Calibration  imgCal = imageImp.getCalibration();		
-			String unit = imgCal.getUnit();	// bark if not "cm" ?
-			double pixSize = imgCal.pixelWidth;
-			int nslices = imageImp.getNSlices();
-
-			String title;
-			String name = imageImp.getTitle();
-			int dotIndex = name.lastIndexOf(".");
-			if(dotIndex != -1) title = name.substring(0, dotIndex);
-			else title  = name;
-			title += "_ParBremSino";
-
-			if(scale16)sinoImp = IJ.createImage(title, detPixCnt, bppSet.numAng, nslices, 16);				
-			else sinoImp = IJ.createImage(title, detPixCnt, bppSet.numAng, nslices, 32);
-			// append "ParBremSino" and the angle count to the image name
-
-			sinoIp = sinoImp.getProcessor();
-
-			for(int i=1;i<=nslices;i++)
-			{
-				IJ.showProgress((double)i/(double)nslices);				
-				sinoImp.setSlice(i);
-				imageImp.setSlice(i);
-				if(detPixCnt>originalWidth)
-				{ //to conserve memory the stack slices are individually padded projected and disposed
-					ImagePlus sliceImp = imageImp.crop();
-					ImageProcessor padIp = resizer.expandImage(sliceImp.getProcessor(), detPixCnt, detPixCnt,(detPixCnt-originalWidth)/2, (detPixCnt-originalWidth)/2);
-					sliceImp.setProcessor(padIp);
-					image = sliceImp.getProcessor().getPixels();
-					sinogram = parPrj.imageToBremsstrahlungParallelSinogram2(bppSet, (float [])image, detPixCnt, detPixCnt);
-					sliceImp.close();
-				}
-				else
-				{
-					image = imageImp.getProcessor().getPixels();
-					sinogram = parPrj.imageToBremsstrahlungParallelSinogram2(bppSet, (float [])image, detPixCnt, detPixCnt);					
-				}				
-				if(scale16)
-				{
-					short[] sino16 = new short[sinogram.length];
-					for(int j = 0; j<sinogram.length;j++)
-					{
-						sino16[j] = (short) (sinogram[j]*scaleFactor);
-					}
-					sinoIp.setPixels(sino16);
-				}
-				else
-				{
-					sinoIp.setPixels(sinogram);
-				}
+			IJ.showProgress((double)i/(double)nslices);				
+			sinoImp.setSlice(i);
+			imageImp.setSlice(i);
+			if(detPixCnt>originalWidth)
+			{ //to conserve memory the stack slices are individually padded projected and disposed
+				ImagePlus sliceImp = imageImp.crop();
+				ImageProcessor padIp = resizer.expandImage(sliceImp.getProcessor(), detPixCnt, detPixCnt,(detPixCnt-originalWidth)/2, (detPixCnt-originalHeight)/2);
+				sliceImp.setProcessor(padIp);
+				image = sliceImp.getProcessor().getPixels();
+				sinogram = parPrj.imageToBremsstrahlungParallelSinogram2(bppSet, (float [])image, detPixCnt, detPixCnt);
+				sliceImp.close();
 			}
-
-			//these properties are preserved in the images tiff file header
-			String[] props = new String[26];
-			props[0]="Geometry"; 
-			props[1]="Parallel";
-			props[2]="Source";
-			props[3]="Bremsstrahlung";			
-			props[4]="Source KV";
-			props[5]=Double.toString(bppSet.kv);
-			props[6]="Source mA";
-			props[7]=Double.toString(bppSet.ma);
-			props[8]="Source Target";
-			props[9]=bppSet.target;
-			props[10]="Min keV";
-			props[11]=Double.toString(bppSet.minKV);
-			props[12]="Bins";
-			props[13]=Double.toString(bppSet.nBins);
-			props[14]="Filter";
-			props[15]=bppSet.filter;
-			props[16]="Filter(cm)";
-			props[17]=Double.toString(bppSet.filterCM);
-			props[18]="Detector";
-			props[19]=bppSet.detFormula;
-			props[20]="Detector(cm)";
-			props[21]=Double.toString(bppSet.detCM);
-			props[22]="Detector(gm/cc)";
-			props[23]=Double.toString(bppSet.detGmPerCC);
-			props[24]="ScaleFactor";
-			if(scale16) props[25]=Double.toString(scaleFactor);
-			else props[25]="Not Scaled";
-			sinoImp.setProperties(props);
-
-			// Set the sinogram X,Y units
-			//The sinogram pixel values are in per pixel units
-			imgCal = imageImp.getCalibration();		
-			unit = imgCal.getUnit();	// bark if not "cm" ?
-			pixSize = imgCal.getX(1); //cm per pixel
-			Calibration sinoCal = sinoImp.getCalibration();
-			sinoCal.setXUnit(unit);
-			sinoCal.setYUnit("Deg");
-			sinoCal.pixelWidth = pixSize;
-			sinoCal.pixelHeight = 180.0/bppSet.numAng;
-
-			ImageStatistics stats = sinoImp.getStatistics();
-			sinoIp.setMinAndMax(stats.min, stats.max);
-			imageImp.setSlice(1);
-			sinoImp.setSlice(1);
-			sinoImp.show();			
+			else
+			{
+				image = imageImp.getProcessor().getPixels();
+				sinogram = parPrj.imageToBremsstrahlungParallelSinogram2(bppSet, (float [])image, detPixCnt, detPixCnt);					
+			}				
+			if(scale16)
+			{
+				short[] sino16 = new short[sinogram.length];
+				for(int j = 0; j<sinogram.length;j++)
+				{
+					sino16[j] = (short) (sinogram[j]*scaleFactor);
+				}
+				sinoIp.setPixels(sino16);
+			}
+			else
+			{
+				sinoIp.setPixels(sinogram);
+			}
 		}
+
+		//these properties are preserved in the images tiff file header
+		String[] props = new String[26];
+		props[0]="Geometry"; 
+		props[1]="Parallel";
+		props[2]="Source";
+		props[3]="Bremsstrahlung";			
+		props[4]="Source KV";
+		props[5]=Double.toString(bppSet.kv);
+		props[6]="Source mA";
+		props[7]=Double.toString(bppSet.ma);
+		props[8]="Source Target";
+		props[9]=bppSet.target;
+		props[10]="Min keV";
+		props[11]=Double.toString(bppSet.minKV);
+		props[12]="Bins";
+		props[13]=Double.toString(bppSet.nBins);
+		props[14]="Filter";
+		props[15]=bppSet.filter;
+		props[16]="Filter(cm)";
+		props[17]=Double.toString(bppSet.filterCM);
+		props[18]="Detector";
+		props[19]=bppSet.detFormula;
+		props[20]="Detector(cm)";
+		props[21]=Double.toString(bppSet.detCM);
+		props[22]="Detector(gm/cc)";
+		props[23]=Double.toString(bppSet.detGmPerCC);
+		props[24]="ScaleFactor";
+		if(scale16) props[25]=Double.toString(scaleFactor);
+		else props[25]="Not Scaled";
+		sinoImp.setProperties(props);
+
+		Calibration sinoCal = sinoImp.getCalibration();
+		sinoCal.setXUnit(unit);
+		sinoCal.setYUnit("Deg");
+		sinoCal.pixelWidth = pixelSize;
+		sinoCal.pixelHeight = 180.0/bppSet.numAng;
+
+		ImageStatistics stats = sinoImp.getStatistics();
+		sinoIp.setMinAndMax(stats.min, stats.max);
+		imageImp.setSlice(1);
+		sinoImp.setSlice(1);
+		sinoImp.show();			
+
 	}
 	
 	//*******************************************************************************
@@ -465,7 +459,7 @@ public class Tag_Image_To_Parallel_Brems_Sinogram implements PlugInFilter , Dial
 		//Rearranging the Dialog components breaks this code
 		gd.resetCounters();
 		bppSet.numAng = (int)gd.getNextNumber();
-		String padOption = gd.getNextChoice();
+		padOption = gd.getNextChoice();
 		detPixCnt = (int) gd.getNextNumber();
 		bppSet.pixSizeCM = pixelSize;
 		bppSet.target = gd.getNextChoice();
@@ -502,7 +496,7 @@ public class Tag_Image_To_Parallel_Brems_Sinogram implements PlugInFilter , Dial
 		originalHeight =ip.getHeight();
 		if(originalHeight != originalWidth)
 		{
-			IJ.showMessage("Image must be Square. Check the PadImage Box in the next dialog");
+			IJ.showMessage("Image must be Square. Select a padding option in the Dialog.");
 		}
 		Calibration cal = imageImp.getCalibration();
 		unit = cal.getUnit().toUpperCase();
@@ -547,19 +541,6 @@ public class Tag_Image_To_Parallel_Brems_Sinogram implements PlugInFilter , Dial
 		{
 			if(ValidateParams(bppSet))
 			{
-//				IJ.log("detCM="+bppSet.detCM);
-//				IJ.log("detFormula="+bppSet.detFormula);
-//				IJ.log("detGmPerCC="+bppSet.detGmPerCC);
-//				IJ.log("filter="+bppSet.filter);
-//				IJ.log("filterCM="+bppSet.filterCM);
-//				IJ.log("filterGmPerCC="+bppSet.filterGmPerCC);
-//				IJ.log("kv="+bppSet.kv);
-//				IJ.log("ma="+bppSet.ma);
-//				IJ.log("minKV="+bppSet.minKV);
-//				IJ.log("nBins="+bppSet.nBins);
-//				IJ.log("numAng="+bppSet.numAng);
-//				IJ.log("pixSizeCM="+bppSet.pixSizeCM);
-//				IJ.log("target="+bppSet.target);				
 				DoRoutine(bppSet);
 				ser.SaveObjectAsSerialized(bppSet, settingsPath);
 			}
@@ -581,6 +562,12 @@ public class Tag_Image_To_Parallel_Brems_Sinogram implements PlugInFilter , Dial
 	{
 		//Test the formulas
 		ArrayList<AtomData> formula;
+		
+		if(originalWidth!=originalHeight && padOption.equals(padOptions[0]))
+		{
+			IJ.showMessage("Non-square images require a pad option.");
+			return false;
+		}
 
 		//Pre-screen the formulas for correctness
 		formula = mmc.createFormulaList(bppSet.target);
@@ -618,4 +605,18 @@ public class Tag_Image_To_Parallel_Brems_Sinogram implements PlugInFilter , Dial
 		
 		return true;
 	}
+//	IJ.log("detCM="+bppSet.detCM);
+//	IJ.log("detFormula="+bppSet.detFormula);
+//	IJ.log("detGmPerCC="+bppSet.detGmPerCC);
+//	IJ.log("filter="+bppSet.filter);
+//	IJ.log("filterCM="+bppSet.filterCM);
+//	IJ.log("filterGmPerCC="+bppSet.filterGmPerCC);
+//	IJ.log("kv="+bppSet.kv);
+//	IJ.log("ma="+bppSet.ma);
+//	IJ.log("minKV="+bppSet.minKV);
+//	IJ.log("nBins="+bppSet.nBins);
+//	IJ.log("numAng="+bppSet.numAng);
+//	IJ.log("pixSizeCM="+bppSet.pixSizeCM);
+//	IJ.log("target="+bppSet.target);				
+
 }

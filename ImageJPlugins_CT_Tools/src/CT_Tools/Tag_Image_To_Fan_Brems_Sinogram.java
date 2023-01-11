@@ -43,6 +43,7 @@ package CT_Tools;
 import ij.IJ;
 
 import ij.ImagePlus;
+import ij.WindowManager;
 import ij.plugin.CanvasResizer;
 import ij.plugin.filter.PlugInFilter;
 import ij.process.ImageProcessor;
@@ -64,21 +65,22 @@ import jhd.Serialize.*;
 import jhd.TagTools.*;
 
 
-//*******************************************************************************
-
 public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogListener//, ActionListener
 {
 	final String myDialogTitle = "Polychromatic Fan Beam CTscan";	
 	final String mySettingsTitle = "Polychromatic_FanBeam_Params";
-
-	//Used to test formulas prior to launching the simulator
-	MuMassCalculator mmc = new MuMassCalculator();
+	final String[] padOptions = {"None","Circumscribed", "Next Power of 2"};
+	final Color myColor = new Color(240,230,190);//slightly darker than buff
+	final Font myFont = new Font(Font.DIALOG, Font.BOLD, 12);
+	final String settingsPath = IJ.getDirectory("plugins") + "DialogSettings" + File.separator + mySettingsTitle + ".ser";
 
 	//The class that does fan projection
 	FanProjectors fanPrj = new FanProjectors();
-
 	//The nested class containing the simulator's user supplied parameters
 	FanProjectors.BremFanParams bfpSet =  new FanProjectors.BremFanParams();	
+
+	//Used to test formulas prior to launching the simulator
+	MuMassCalculator mmc = new MuMassCalculator();
 
 	//The class used to serialize (save) the users selections
 	Serializer ser = new Serializer();
@@ -102,25 +104,18 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 	String[] formula;
 	double[] gmPerCC;
 
-	String[] targetSymb = Arrays.copyOf(mmc.getAtomSymbols(),mmc.getAtomSymbols().length); //{"Ag","Au","Cr","Cu","Mo","Rh","W"};
-	String[] filterSymb = Arrays.copyOf(mmc.getAtomSymbols(),mmc.getAtomSymbols().length); //{"Ag","Al","Cu","Er","Mo","Nb","Rh","Ta"};
-
-	final String[] padOptions = {"None","Circumscribed", "Next Power of 2"};
+	String[] targetSymb = Arrays.copyOf(mmc.getAtomSymbols(),mmc.getAtomSymbols().length);
+	String[] filterSymb = Arrays.copyOf(mmc.getAtomSymbols(),mmc.getAtomSymbols().length);
 
 	//GLOBALS
 	boolean scale16;
+	String padOption;
 	ImagePlus imageImp;
-	int originalWidth,originalHeight; //the width and height of the current image
-	int paddedWidth,paddedHeight; //the width and height of the current image after padding with zeros
+	int originalWidth,originalHeight;
+	int paddedWidth,paddedHeight;
 	double pixelSize;
 	String unit;
 	double scaleFactor=6000;
-
-	//the full path to the dialog settings
-	String settingsPath = IJ.getDirectory("plugins") + "DialogSettings" + File.separator + mySettingsTitle + ".ser";
-
-	final Color myColor = new Color(240,230,190);//slightly darker than buff
-	Font myFont = new Font(Font.DIALOG, Font.BOLD, 12);
 
 	ChoiceField padOptionsCF,detMaterialCF;
 	NumericField detPixCntNF,detDensityNF;
@@ -138,7 +133,7 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 
 		int	detMinCnt; //the minimum number of detector pixels to  project an image after magnification
 		int detPixCnt; //the actual number of detector pixels entered by the user. Must be >= detMinCnt
-		int paddedWidth;
+		//int paddedWidth;
 		double mag,srcToDet,axisToDet;
 		int numAngles;	
 		String padChoice;
@@ -179,6 +174,8 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 					detPixCntNF.setNumber(detMinCnt);					
 					detMinCntMF.getLabel().setText("Minimum Detector Width = " + detMinCnt + " pixels");				
 					paddedWidthMF.getLabel().setText("Padded Image Width = " + paddedWidth + " pixels");
+					break;
+					
 				case "detPixCnt":
 					detPixCnt = (int) detPixCntNF.getNumber();
 					if(detPixCnt > originalWidth)
@@ -357,6 +354,7 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 		if(dotIndex != -1) title = name.substring(0, dotIndex);
 		else title  = name;
 		title += "_FanBremSino";
+		title = WindowManager.getUniqueName(title);
 
 		int length = sinogram.length;
 		int width = length/bfpSet.numAng;
@@ -553,7 +551,7 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 
 		bfpSet.numAng = (int)gd.getNextNumber();
 		bfpSet.pixSizeCM = pixelSize;
-		String padOption = gd.getNextChoice();	
+		padOption = gd.getNextChoice();	
 		double mag = magnificationNF.getNumber();
 		paddedWidth =(int)(gd.getNextNumber()/mag);
 		bfpSet.srcToDetCM = (float)gd.getNextNumber();
@@ -653,6 +651,13 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 	{
 		//Test the formulas
 		ArrayList<AtomData> formula;
+
+		if(originalWidth!=originalHeight && padOption.equals(padOptions[0]))
+		{
+			IJ.showMessage("Non-square images require a pad option.");
+			return false;
+		}
+
 		formula = mmc.createFormulaList(bfpSet.target);
 		if(formula==null) {IJ.error(bfpSet.target + " Is not a valid target material"); return false;}
 		formula = mmc.createFormulaList(bfpSet.filter);
