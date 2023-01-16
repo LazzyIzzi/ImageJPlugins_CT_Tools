@@ -27,7 +27,6 @@ import ij.ImagePlus;
 import ij.WindowManager;
 import ij.plugin.CanvasResizer;
 import ij.plugin.filter.PlugInFilter;
-import ij.process.ImageConverter;
 import ij.process.ImageProcessor;
 import ij.process.ImageStatistics;
 import ij.gui.*;
@@ -37,20 +36,17 @@ import ij.measure.Calibration;
 import java.io.File;
 import java.awt.*;
 import java.util.ArrayList;
-//import java.util.Vector;
-//import java.util.Properties;
 import java.util.Arrays;
 
 import jhd.MuMassCalculator.*;
-//import jhd.MuMassCalculator.ParallelProjectors;
 import jhd.ImageJAddins.GenericDialogAddin;
 import jhd.ImageJAddins.GenericDialogAddin.*;
 import gray.AtomData.*;
-//import jhd.Projection.*;
 import jhd.Projection.ParallelProjectors;
 import jhd.Projection.ParallelProjectors.BremParallelParams;
 import jhd.Serialize.Serializer;
 import jhd.TagTools.MatlListTools;
+import jhd.TagTools.MatlListTools.TagSet;
 
 //*******************************************************************************
 
@@ -60,6 +56,8 @@ public class Tag_Image_To_Parallel_Brems_Sinogram implements PlugInFilter , Dial
 	final String mySettingsTitle = "Polychromatic_ParallelBeam_Params";
 	final String[] padOptions = {"None","Circumscribed", "Next Power of 2"};
 	final Color myColor = new Color(240,230,190);//slightly darker than buff
+	final Color errColor = new Color(255,100,0);
+	final Color white = new Color(255,255,255);
 	final Font myFont = new Font(Font.DIALOG, Font.BOLD, 12);
 	
 	//The methods that do the projections
@@ -92,9 +90,13 @@ public class Tag_Image_To_Parallel_Brems_Sinogram implements PlugInFilter , Dial
 	String[] formula;	
 	double[] gmPerCC;
 	
+	String[] filteredMatlName;
+	String[] filteredMatlFormula,filteredElementFormula;	
+	double[] filteredMatlGmPerCC;
+	
 	//Local parameters
-	String[] targetSymb = Arrays.copyOf(mmc.getAtomSymbols(),mmc.getAtomSymbols().length); //{"Ag","Au","Cr","Cu","Mo","Rh","W"};
-	String[] filterSymb = Arrays.copyOf(mmc.getAtomSymbols(),mmc.getAtomSymbols().length); //{"Ag","Al","Cu","Er","Mo","Nb","Rh","Ta"};
+	String[] targetSymb = Arrays.copyOf(mmc.getAtomSymbols(),mmc.getAtomSymbols().length);
+	String[] filterSymb = Arrays.copyOf(mmc.getAtomSymbols(),mmc.getAtomSymbols().length);
 
 	String padOption;
 	boolean scale16;//,padImage;
@@ -105,20 +107,11 @@ public class Tag_Image_To_Parallel_Brems_Sinogram implements PlugInFilter , Dial
 	int	detPixCnt;		
 	double scaleFactor = 6000;
 	
-	String dir = IJ.getDirectory("plugins");
-	
-	String settingsPath = dir+ "DialogSettings" + File.separator + mySettingsTitle + ".ser";
+	String settingsPath = IJ.getDirectory("plugins") + "DialogSettings" + File.separator + mySettingsTitle + ".ser";
 
-
-	//Some of these are not be used
-//	ChoiceField srcTargetCF;
-//	NumericField srcAccelVoltsNF,srcMilliAmpsNF,srcKevBinsNF,srcKevMinNF;	
-//	ChoiceField filterMaterialCF;
-//	NumericField filterThicknessNF;	
 	NumericField detThicknessNF,detDensityNF;
-	StringField detFormulaSF;
+	StringField detFormulaSF,detFiltSF;
 	ChoiceField padOptionsCF,detMaterialCF;
-//	CheckboxField scale16CBF;
 	NumericField detPixCntNF;
 	NumericField scaleFactorNF;	
 	NumericField numAnglesNF;
@@ -144,21 +137,62 @@ public class Tag_Image_To_Parallel_Brems_Sinogram implements PlugInFilter , Dial
 			else if(src instanceof TextField)
 			{
 				TextField tf= (TextField)src;
+				String filterStr = tf.getText();
 				String name = tf.getName();
+				TagSet filteredTagData;
 				switch(name)
 				{
 				case "detPixCnt":
-					detPixCnt = (int) detPixCntNF.getNumber();
-					if(detPixCnt > originalWidth)
-					{
-						int numAngles = (int) (Math.ceil(Math.PI*detPixCnt/2));
-						//make numAngles even
-						if ((numAngles ^ 1) == numAngles - 1)	numAngles++;	
-						numAnglesNF.setNumber(numAngles);
-					}
-					else dialogOK=false;
+					dialogOK=handleDetPixCntEvent();
 					break;
+				case "numAngles":
+					int numAngles =(int)numAnglesNF.getNumber();
+					if(Double.isNaN(numAngles) || numAngles <1) dialogOK=false;						
+					break;
+				case "detectorFilter":
+					filteredTagData = mlt.filterTagData(tagSet, filterStr);
+					if(filterStr.equals(""))
+					{
+						//copy the original arrays into the filtered arrays
+						filteredMatlName = bppSet.matlName;
+						filteredMatlFormula = bppSet.matlFormula;
+						filteredMatlGmPerCC =bppSet.matlGmPerCC;
+					}
+					else
+					{
+						filteredMatlName = mlt.getTagSetMatlNamesAsArray(filteredTagData);
+						filteredMatlFormula = mlt.getTagSetMatlFormulasAsArray(filteredTagData);
+						filteredMatlGmPerCC =mlt.getTagSetMatlGmPerccAsArray(filteredTagData);
+					}
+					detMaterialCF.getChoice().setVisible(false);
+					detMaterialCF.getChoice().removeAll();
+					detMaterialCF.setChoices(filteredMatlName);
+					detMaterialCF.getChoice().setVisible(true);
+					if(filteredMatlName.length>0)
+					{
+						detMaterialCF.getChoice().select(0);
+						detFormulaSF.getTextField().setText(filteredMatlFormula[0]);
+						detDensityNF.setNumber(filteredMatlGmPerCC[0]);
+					}
+					break;
+				case "detectorFormula":
+					//the only non-numeric text field
+					String detFormula = detFormulaSF.getTextField().getText();
+					if(mmc.getMevArray(detFormula)==null) dialogOK = false;
+					break;
+				default:
+					//all of the others are numeric
+					String numStr = tf.getText();
+					if(!isNumeric(numStr)) dialogOK=false;
+					else
+					{
+						double num = Double.valueOf(numStr);
+						if(num<0) dialogOK=false;
+					}
+				break;
 				}				
+				if(!dialogOK) tf.setBackground(errColor);
+				else tf.setBackground(white);
 			}
 			else if(src instanceof Choice)
 			{
@@ -168,42 +202,12 @@ public class Tag_Image_To_Parallel_Brems_Sinogram implements PlugInFilter , Dial
 				{
 				case "padOptions":
 					String option = choice.getSelectedItem();
-					int numAngles=0;
-					switch(option)
-					{
-					case "None":
-						detPixCnt = originalWidth;
-						detPixCntNF.setNumber(detPixCnt);
-						numAngles = (int) (Math.ceil(Math.PI*detPixCnt/2));
-						break;
-					case "Circumscribed":
-						detPixCnt = (int) (Math.ceil(Math.sqrt(originalWidth*originalWidth + originalHeight*originalHeight)));
-						detPixCntNF.setNumber(detPixCnt);
-						numAngles = (int) (Math.ceil(Math.PI*detPixCnt/2));
-						break;
-					case "Next Power of 2":
-						int size = originalWidth;
-						if(originalHeight>size) size = originalHeight;
-						detPixCnt = 0;
-						for(int i=0;i< 10;i++)
-						{
-							detPixCnt =(int) Math.pow(2, i);
-							if(detPixCnt>size) break;
-						}				
-						detPixCntNF.setNumber(detPixCnt);
-						numAngles = (int) (Math.ceil(Math.PI*detPixCnt));
-						break;
-					case "Custom":
-						break;
-					}
-					//make numAngles even
-					if ((numAngles ^ 1) == numAngles - 1)	numAngles++;	
-					numAnglesNF.setNumber(numAngles);
+					handlePadOptionsEvent(option);
 					break;
 				case "detectorMaterial":
 					int index = detMaterialCF.getChoice().getSelectedIndex();
-					detFormulaSF.getTextField().setText(bppSet.matlFormula[index]);
-					detDensityNF.setNumber(bppSet.matlGmPerCC[index]);					
+					detFormulaSF.getTextField().setText(filteredMatlFormula[index]);
+					detDensityNF.setNumber(filteredMatlGmPerCC[index]);					
 					break;
 				}
 			}
@@ -216,7 +220,61 @@ public class Tag_Image_To_Parallel_Brems_Sinogram implements PlugInFilter , Dial
 	
 	//*******************************************************************************
 
-	private boolean DoDialog()
+	private boolean handleDetPixCntEvent()
+	{
+		boolean dialogOK = true;
+		detPixCnt = (int) detPixCntNF.getNumber();
+		if(detPixCnt > originalWidth)
+		{
+			int numAngles = (int) (Math.ceil(Math.PI*detPixCnt/2));
+			//make numAngles even
+			if ((numAngles ^ 1) == numAngles - 1)	numAngles++;	
+			numAnglesNF.setNumber(numAngles);
+		}
+		else dialogOK=false;
+		return dialogOK;
+		
+	}
+	//*******************************************************************************
+
+	private void handlePadOptionsEvent(String padOption)
+	{
+		int numAngles=0;
+		switch(padOption)
+		{
+		case "None":
+			detPixCnt = originalWidth;
+			detPixCntNF.setNumber(detPixCnt);
+			numAngles = (int) (Math.ceil(Math.PI*detPixCnt/2));
+			break;
+		case "Circumscribed":
+			detPixCnt = (int) (Math.ceil(Math.sqrt(originalWidth*originalWidth + originalHeight*originalHeight)));
+			detPixCntNF.setNumber(detPixCnt);
+			numAngles = (int) (Math.ceil(Math.PI*detPixCnt/2));
+			break;
+		case "Next Power of 2":
+			int size = originalWidth;
+			if(originalHeight>size) size = originalHeight;
+			detPixCnt = 0;
+			for(int i=0;i< 10;i++)
+			{
+				detPixCnt =(int) Math.pow(2, i);
+				if(detPixCnt>size) break;
+			}				
+			detPixCntNF.setNumber(detPixCnt);
+			numAngles = (int) (Math.ceil(Math.PI*detPixCnt/2));
+			break;
+		case "Custom":
+			break;
+		}
+		if ((numAngles ^ 1) == numAngles - 1)	numAngles++;	
+		numAnglesNF.setNumber(numAngles);
+	}
+
+	
+	//*******************************************************************************
+
+	private boolean doDialog()
 	{
 		int detPixCnt= imageImp.getWidth();
 
@@ -275,15 +333,17 @@ public class Tag_Image_To_Parallel_Brems_Sinogram implements PlugInFilter , Dial
 				break;
 			}			
 		}
+		gd.addStringField("Detector_Name_Filter", "");
+		detFiltSF = gda.getStringField(gd, null, "detectorFilter");
 		gd.addChoice("Detector",bppSet.matlName, bppSet.matlName[index]);
 		detMaterialCF = gda.getChoiceField(gd, null, "detectorMaterial");
 	
 		gd.addStringField("Formula", bppSet.detFormula);
-		detFormulaSF = gda.getStringField(gd, null, "detFormula");
+		detFormulaSF = gda.getStringField(gd, null, "detectorFormula");
 		gd.addNumericField("Thickness(cm)", bppSet.detCM);
-		detThicknessNF = gda.getNumericField(gd, null, "detThickness");
+		detThicknessNF = gda.getNumericField(gd, null, "detectorThickness");
 		gd.addNumericField("Density(gm/cc)", bppSet.detGmPerCC);
-		detDensityNF = gda.getNumericField(gd, null, "detDensity");
+		detDensityNF = gda.getNumericField(gd, null, "detectorDensity");
 		
 		gd.addCheckbox("Scale to 16-bit proj", false);
 		//scale16CBF = gda.getCheckboxField(gd, "scale16");
@@ -293,6 +353,14 @@ public class Tag_Image_To_Parallel_Brems_Sinogram implements PlugInFilter , Dial
 		gd.addHelp("https://lazzyizzi.github.io/CTsimulator.html");
 		gd.setBackground(myColor);
      	
+		//the pad option can be awitched after the dialog fields
+		//have been set up;
+		if(originalWidth!= originalHeight)
+		{
+			padOption = padOptions[2];
+			padOptionsCF.getChoice().select(padOption);
+			handlePadOptionsEvent(padOption);
+		}
 		gd.showDialog();
 
 		if (gd.wasCanceled())
@@ -469,7 +537,8 @@ public class Tag_Image_To_Parallel_Brems_Sinogram implements PlugInFilter , Dial
 		bppSet.minKV = gd.getNextNumber();
 		bppSet.filter = gd.getNextChoice();
 		bppSet.filterCM = gd.getNextNumber();
-		bppSet.detFormula = gd.getNextString();
+		bppSet.detFormula = gd.getNextString();//detector Filter
+		bppSet.detFormula = gd.getNextString();//detector formula
 		bppSet.detCM = gd.getNextNumber();
 		bppSet.detGmPerCC =  gd.getNextNumber();
 		scale16 = gd.getNextBoolean();
@@ -491,13 +560,9 @@ public class Tag_Image_To_Parallel_Brems_Sinogram implements PlugInFilter , Dial
 		Arrays.sort(targetSymb);
 		Arrays.sort(filterSymb);
 		
-		//the original image width and height
 		originalWidth =ip.getWidth();
 		originalHeight =ip.getHeight();
-		if(originalHeight != originalWidth)
-		{
-			IJ.showMessage("Image must be Square. Select a padding option in the Dialog.");
-		}
+
 		Calibration cal = imageImp.getCalibration();
 		unit = cal.getUnit().toUpperCase();
 		if(!unit.equals("CM"))
@@ -536,8 +601,12 @@ public class Tag_Image_To_Parallel_Brems_Sinogram implements PlugInFilter , Dial
 			bppSet.matlName = mlt.getTagSetMatlNamesAsArray(tagSet);
 			bppSet.matlTag = mlt.getTagSetMatlTagAsArray(tagSet);
 		}
+		
+		filteredMatlName=bppSet.matlName;
+		filteredMatlFormula=bppSet.matlFormula;
+		filteredMatlGmPerCC=bppSet.matlGmPerCC;
 
-		if(DoDialog())
+		if(doDialog())
 		{
 			if(ValidateParams(bppSet))
 			{
@@ -589,34 +658,21 @@ public class Tag_Image_To_Parallel_Brems_Sinogram implements PlugInFilter , Dial
 		formula = mmc.createFormulaList(bppSet.detFormula);
 		if(formula==null) {IJ.error(bppSet.detFormula + " Is not a valid detector material"); return false;}
 		
-		//Test the numbers
-		if(bppSet.kv < bppSet.minKV){IJ.error("Source KV " + bppSet.kv + " Must be greater than " + bppSet.minKV + "KV"); return false;}
-		if(bppSet.kv <=0){IJ.error("Source KV " + bppSet.kv + " Must be greater than 0 KV"); return false;}
-		if(bppSet.ma <=0){IJ.error("Source mA " + bppSet.ma + " Must be greater than 0 mA"); return false;}
-		if(bppSet.nBins <=0){IJ.error("Bin Count " + bppSet.nBins + " Must be greater than 0"); return false;}
-		if(bppSet.minKV > bppSet.kv){IJ.error("Source minMV " + bppSet.minKV + " Must be less than " + bppSet.kv + "KV"); return false;}
-		
-		if(bppSet.filterCM < 0){IJ.error("Filter Thickness " + bppSet.filterCM + " Cannot be negative"); return false;}
-		if(bppSet.filterGmPerCC <= 0){IJ.error("Filter Density " + bppSet.filterGmPerCC + " Cannot be negative"); return false;}
-		
-		if(bppSet.numAng < 1){IJ.error("Number of angles " + bppSet.numAng + " Cannot be negative or zero"); return false;}
-		if(bppSet.detCM <= 0){IJ.error("Detector Thickness " + bppSet.detCM + " Cannot be negative"); return false;}
-		if(bppSet.detGmPerCC <= 0){IJ.error("Detector Densith " + bppSet.detCM + " Cannot be negative or zero"); return false;}
-		
 		return true;
 	}
-//	IJ.log("detCM="+bppSet.detCM);
-//	IJ.log("detFormula="+bppSet.detFormula);
-//	IJ.log("detGmPerCC="+bppSet.detGmPerCC);
-//	IJ.log("filter="+bppSet.filter);
-//	IJ.log("filterCM="+bppSet.filterCM);
-//	IJ.log("filterGmPerCC="+bppSet.filterGmPerCC);
-//	IJ.log("kv="+bppSet.kv);
-//	IJ.log("ma="+bppSet.ma);
-//	IJ.log("minKV="+bppSet.minKV);
-//	IJ.log("nBins="+bppSet.nBins);
-//	IJ.log("numAng="+bppSet.numAng);
-//	IJ.log("pixSizeCM="+bppSet.pixSizeCM);
-//	IJ.log("target="+bppSet.target);				
-
+	
+	//*******************************************************************************
+	
+	public static boolean isNumeric(String str)
+	{ 
+		try
+		{  
+			Double.parseDouble(str);  
+			return true;
+		}
+		catch(NumberFormatException e)
+		{  
+			return false;  
+		}  
+	}
 }

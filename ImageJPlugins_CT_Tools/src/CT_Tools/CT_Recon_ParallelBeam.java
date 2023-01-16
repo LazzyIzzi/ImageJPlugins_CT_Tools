@@ -142,6 +142,8 @@ public class CT_Recon_ParallelBeam implements ActionListener, DialogListener, Im
 	
 	//The background color for the GenericDialog just because I like it.
 	final Color myColor = new Color(240,230,190);//slightly darker than buff
+	final Color errColor = new Color(255,100,0);
+	final Color white = new Color(255,255,255);
 	private boolean littleEndian = false;
 
 	//*********************************************************************************************
@@ -196,21 +198,22 @@ public class CT_Recon_ParallelBeam implements ActionListener, DialogListener, Im
 			ImagePlus testImp = WindowManager.getImage("TestImage.rcon");
 			if(testImp==null)
 			{
-				reconImp.show();			
-				IJ.run(reconImp, "Divide...", "value=" + reconCal.pixelWidth + " stack");
-				IJ.run("Enhance Contrast", "saturated=0.35");
+				reconImp.getProcessor().multiply(1/reconCal.pixelWidth);
+				reconImp.show();
 			}
 			else
 			{
 				testImp.setImage(reconImp);
-				
-				IJ.selectWindow("TestImage.rcon");					
-				IJ.run(testImp, "Divide...", "value=" + reconCal.pixelWidth + " stack");
-				IJ.run("Enhance Contrast", "saturated=0.35");
+				Roi roi = testImp.getRoi();
+				testImp.setRoi(0,0,testImp.getWidth(),testImp.getHeight());
+				testImp.getProcessor().multiply(1/reconCal.pixelWidth);
+				testImp.setRoi(roi);
+				ImageStatistics stats = testImp.getStatistics();
+				testImp.getProcessor().setMinAndMax(stats.min, stats.max);
+				testImp.updateAndDraw();						
 			}		
 			break;
-		}
-		
+		}		
 	}
 		
 	//*********************************************************************************************
@@ -300,14 +303,12 @@ public class CT_Recon_ParallelBeam implements ActionListener, DialogListener, Im
 			Object src = e.getSource();
 			if(src instanceof Choice)
 			{
-
 				Choice theChoice = (Choice)src;
 				String choiceName = theChoice.getName();
 				switch (choiceName)
 				{
 				case "sinogram":
 					IJ.runMacro("selectWindow(\"" + imageImp.getTitle() + "\")");
-					//update the suggested rotation axis
 					rotAxisNF.setNumber(imageImp.getWidth()/2);
 					break;
 				}
@@ -324,14 +325,26 @@ public class CT_Recon_ParallelBeam implements ActionListener, DialogListener, Im
 				{
 				case "rotAxis":				
 					double rotAxis = rotAxisNF.getNumber();
-					if(rotAxis <0 || rotAxis> imageImp.getWidth())
+					if(Double.isNaN(rotAxis) ||rotAxis <0 || rotAxis> imageImp.getWidth())
 					{
 						reconSliceBF.getButton().setEnabled(false);
 						dlogOK = false;
 					}
 					else reconSliceBF.getButton().setEnabled(true);
 					break;
+				case "scaleFactor":
+					double scaleFactor = scaleFactorNF.getNumber();
+					if(Double.isNaN(scaleFactor)|| scaleFactor<1)
+						{
+							dlogOK = false;
+							reconSliceBF.getButton().setEnabled(false);
+							dlogOK = false;
+						}
+						else reconSliceBF.getButton().setEnabled(true);
+					break;
 				}
+				if(!dlogOK) tf.setBackground(errColor);
+				else tf.setBackground(white);
 			}
 		}
 		//dialogItemChanged is called once with a null argument when
@@ -496,6 +509,7 @@ public class CT_Recon_ParallelBeam implements ActionListener, DialogListener, Im
 	@Override
 	public void imageOpened(ImagePlus imp) {
 		if(IJ.isMacro()) return;
+		if(imp.getTitle().equals("TestImage.rcon")) return;
 		String[] titles =getImages();
 		sinoCF.getChoice().removeAll();
 		sinoCF.setChoices(titles);

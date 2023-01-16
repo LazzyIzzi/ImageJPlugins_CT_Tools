@@ -63,6 +63,7 @@ import gray.AtomData.*;
 import jhd.Projection.*;
 import jhd.Serialize.*;
 import jhd.TagTools.*;
+import jhd.TagTools.MatlListTools.TagSet;
 
 
 public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogListener//, ActionListener
@@ -71,6 +72,8 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 	final String mySettingsTitle = "Polychromatic_FanBeam_Params";
 	final String[] padOptions = {"None","Circumscribed", "Next Power of 2"};
 	final Color myColor = new Color(240,230,190);//slightly darker than buff
+	final Color errColor = new Color(255,100,0);
+	final Color white = new Color(255,255,255);
 	final Font myFont = new Font(Font.DIALOG, Font.BOLD, 12);
 	final String settingsPath = IJ.getDirectory("plugins") + "DialogSettings" + File.separator + mySettingsTitle + ".ser";
 
@@ -103,6 +106,10 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 	String[] matlArr;	
 	String[] formula;
 	double[] gmPerCC;
+	
+	String[] filteredMatlName;
+	String[] filteredMatlFormula,filteredElementFormula;	
+	double[] filteredMatlGmPerCC;
 
 	String[] targetSymb = Arrays.copyOf(mmc.getAtomSymbols(),mmc.getAtomSymbols().length);
 	String[] filterSymb = Arrays.copyOf(mmc.getAtomSymbols(),mmc.getAtomSymbols().length);
@@ -124,18 +131,12 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 	NumericField magnificationNF;
 	NumericField srcToDetNF;
 	MessageField axisToDetMF,detMinCntMF,paddedWidthMF;	
-	StringField detFormulaSF;
+	StringField detFormulaSF,detFiltSF;
 	
 	//*******************************************************************************	
 	
 	public boolean dialogItemChanged(GenericDialog gd, AWTEvent e)
 	{
-
-		int	detMinCnt; //the minimum number of detector pixels to  project an image after magnification
-		int detPixCnt; //the actual number of detector pixels entered by the user. Must be >= detMinCnt
-		//int paddedWidth;
-		double mag,srcToDet,axisToDet;
-		int numAngles;	
 		String padChoice;
 		boolean dialogOK = true;
 
@@ -158,36 +159,67 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 			{
 				TextField tf= (TextField)src;
 				String name = tf.getName();
+				TagSet filteredTagData;
+				String filterStr = tf.getText();
 				switch(name)
 				{
 				case "magnification":
 				case "sourceToDetector":
 					padChoice = padOptionsCF.getChoice().getSelectedItem();
-					srcToDet = srcToDetNF.getNumber();
-					mag = magnificationNF.getNumber();
-					axisToDet = getAxisToDet(mag,srcToDet);
-					detMinCnt = getMinDetCnt(originalWidth,mag,padChoice);
-					paddedWidth = getMinDetCnt(originalWidth,1,padChoice);
-					numAngles = getNumAngles(detMinCnt);
-					axisToDetMF.getLabel().setText("Axis to Detector = " + String.format("%.3f" + " cm", axisToDet));
-					numAnglesNF.setNumber(numAngles);
-					detPixCntNF.setNumber(detMinCnt);					
-					detMinCntMF.getLabel().setText("Minimum Detector Width = " + detMinCnt + " pixels");				
-					paddedWidthMF.getLabel().setText("Padded Image Width = " + paddedWidth + " pixels");
-					break;
-					
+					dialogOK = handleSrcToDetEvent(padChoice);
+					break;					
 				case "detPixCnt":
-					detPixCnt = (int) detPixCntNF.getNumber();
-					if(detPixCnt > originalWidth)
-					{
-						numAngles = (int) (Math.ceil(Math.PI*detPixCnt/2));
-						//make numAngles even
-						if ((numAngles ^ 1) == numAngles - 1)	numAngles++;	
-						numAnglesNF.setNumber(numAngles);
-					}
-					else dialogOK=false;
+					padChoice = padOptionsCF.getChoice().getSelectedItem();
+					dialogOK = handleDetPixCntEvent(padChoice);
 					break;
+				case "numAngles":
+					int numAngles =(int)numAnglesNF.getNumber();
+					if(Double.isNaN(numAngles) || numAngles <1) dialogOK=false;						
+					break;
+				case "detectorFilter":
+					filteredTagData = mlt.filterTagData(tagSet, filterStr);
+					if(filterStr.equals(""))
+					{
+						//copy the original arrays into the filtered arrays
+						filteredMatlName = bfpSet.matlName;
+						filteredMatlFormula = bfpSet.matlFormula;
+						filteredMatlGmPerCC =bfpSet.matlGmPerCC;
+					}
+					else
+					{
+						filteredMatlName = mlt.getTagSetMatlNamesAsArray(filteredTagData);
+						filteredMatlFormula = mlt.getTagSetMatlFormulasAsArray(filteredTagData);
+						filteredMatlGmPerCC =mlt.getTagSetMatlGmPerccAsArray(filteredTagData);
+					}
+					detMaterialCF.getChoice().setVisible(false);
+					detMaterialCF.getChoice().removeAll();
+					detMaterialCF.setChoices(filteredMatlName);
+					detMaterialCF.getChoice().setVisible(true);
+					if(filteredMatlName.length>0)
+					{
+						detMaterialCF.getChoice().select(0);
+						detFormulaSF.getTextField().setText(filteredMatlFormula[0]);
+						detDensityNF.setNumber(filteredMatlGmPerCC[0]);
+					}
+					break;
+				case "detectorFormula":
+					//the only non-numeric text field
+					String detFormula = detFormulaSF.getTextField().getText();
+					if(mmc.getMevArray(detFormula)==null) dialogOK = false;
+					break;
+				default:
+					//all of the others are numeric
+					String numStr = tf.getText();
+					if(!isNumeric(numStr)) dialogOK=false;
+					else
+					{
+						double num = Double.valueOf(numStr);
+						if(num<0) dialogOK=false;
+					}
+				break;
 				}				
+				if(!dialogOK) tf.setBackground(errColor);
+				else tf.setBackground(white);
 			}
 			else if(src instanceof Choice)
 			{
@@ -197,28 +229,83 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 				{
 				case "padOptions":
 					String padOption = choice.getSelectedItem();
-					paddedWidth = getMinDetCnt(originalWidth,1,padOption);
-					paddedWidthMF.getLabel().setText("Padded Image Width = " + paddedWidth + " pixels");				
-					detMinCnt = getMinDetCnt(paddedWidth,bfpSet.magnification,padOption);
-					detPixCntNF.setNumber(detMinCnt);
-					detMinCntMF.getLabel().setText("Minimum Detector Width = " + detMinCnt + " pixels");				
-					numAngles = (int) (Math.ceil(Math.PI*detMinCnt/2));					
-					if ((numAngles ^ 1) == numAngles - 1)	numAngles++;	
-					numAnglesNF.setNumber(numAngles);
-					break;
+					handlePadOptionsEvent(padOption);
 				case "detectorMaterial":
 					int index = detMaterialCF.getChoice().getSelectedIndex();
-					detFormulaSF.getTextField().setText(bfpSet.matlFormula[index]);
-					detDensityNF.setNumber(bfpSet.matlGmPerCC[index]);					
+					detFormulaSF.getTextField().setText(filteredMatlFormula[index]);
+					detDensityNF.setNumber(filteredMatlGmPerCC[index]);					
 					break;
 				}
 			}
-
 		}
 		getSelections(gd);
 
 		return dialogOK;
 	}
+	
+	//*******************************************************************************
+
+	private boolean handleDetPixCntEvent(String padChoice)
+	{
+		boolean dialogOK = true;
+		double mag;
+		int detMinCnt,detPixCnt;
+
+		mag = magnificationNF.getNumber();
+		if(mag<=1 || Double.isNaN(mag))
+		{
+			dialogOK = false;
+		}
+		else
+		{
+			detMinCnt = getMinDetCnt(originalWidth,mag,padChoice);
+			detPixCnt = (int) detPixCntNF.getNumber();
+			paddedWidth = (int)(detPixCnt/mag);
+			paddedWidthMF.getLabel().setText("Padded Image Width = " + paddedWidth + " pixels");				
+			if(detPixCnt< detMinCnt)
+			{
+				dialogOK = false;
+			}
+		}
+		return dialogOK;		
+	}
+
+	
+	private boolean handleSrcToDetEvent(String padChoice)
+	{
+		double mag = magnificationNF.getNumber();
+		if(mag<=1 || Double.isNaN(mag))
+		{
+			return false;
+		}
+		else
+		{
+			double srcToDet = srcToDetNF.getNumber();
+			double axisToDet = getAxisToDet(mag,srcToDet);
+			int detMinCnt = getMinDetCnt(originalWidth,mag,padChoice);
+			int numAngles = getNumAngles(detMinCnt);
+			paddedWidth = getMinDetCnt(originalWidth,1,padChoice);
+			axisToDetMF.getLabel().setText("Axis to Detector = " + String.format("%.3f" + " cm", axisToDet));
+			numAnglesNF.setNumber(numAngles);
+			detPixCntNF.setNumber(detMinCnt);					
+			detMinCntMF.getLabel().setText("Minimum Detector Width = " + detMinCnt + " pixels");				
+			paddedWidthMF.getLabel().setText("Padded Image Width = " + paddedWidth + " pixels");
+			return true;
+		}
+	}
+	
+	private void handlePadOptionsEvent(String padChoice)
+	{
+		paddedWidth = getMinDetCnt(originalWidth,1,padChoice);
+		paddedWidthMF.getLabel().setText("Padded Image Width = " + paddedWidth + " pixels");				
+		int detMinCnt = getMinDetCnt(paddedWidth,bfpSet.magnification,padChoice);
+		detPixCntNF.setNumber(detMinCnt);
+		detMinCntMF.getLabel().setText("Minimum Detector Width = " + detMinCnt + " pixels");				
+		int numAngles = (int) (Math.ceil(Math.PI*detMinCnt/2));					
+		if ((numAngles ^ 1) == numAngles - 1)	numAngles++;	
+		numAnglesNF.setNumber(numAngles);		
+	}
+	
 	
 	//*******************************************************************************
 
@@ -245,7 +332,7 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 		gd.addNumericField("Detector_Pixels = " , detMinCnt);
 		detPixCntNF = gda.getNumericField(gd, null, "detPixCnt");
 		gd.addNumericField("Source to Detector(cm):", bfpSet.srcToDetCM);
-		srcToDetNF = gda.getNumericField(gd, null, "srcToDet");
+		srcToDetNF = gda.getNumericField(gd, null, "sourceToDetector");
 		gd.addNumericField("Magnification:", bfpSet.magnification);
 		magnificationNF = gda.getNumericField(gd, null, "magnification");
 		gd.addMessage("Axis to Detector = " + String.format("%.3f" + " cm", bfpSet.srcToDetCM - srcToSampCM ));
@@ -285,20 +372,30 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 				break;
 			}			
 		}
+		gd.addStringField("Detector_Name_Filter", "");
+		detFiltSF = gda.getStringField(gd, null, "detectorFilter");
 		gd.addChoice("Detector",bfpSet.matlName, bfpSet.matlName[index]);
 		detMaterialCF = gda.getChoiceField(gd, null, "detectorMaterial");
 
 		gd.addStringField("Formula", bfpSet.detFormula);
-		detFormulaSF = gda.getStringField(gd, null, "detFormula");
+		detFormulaSF = gda.getStringField(gd, null, "detectorFormula");
 		gd.addNumericField("Thickness(cm)", bfpSet.detCM);
 		gd.addNumericField("Density(gm/cc)", bfpSet.detGmPerCC);
-		detDensityNF = gda.getNumericField(gd, null, "detDensity");
+		detDensityNF = gda.getNumericField(gd, null, "detectorDensity");
 		gd.addCheckbox("Scale to 16-bit proj", scale16);
 		gd.addNumericField("Scale Factor", scaleFactor);
 
 		//gd.addCheckbox("Pad Image", padImage);
 		gd.addHelp("https://lazzyizzi.github.io/CTsimulator.html");
 		gd.setBackground(myColor);
+		
+		if(originalWidth!= originalHeight)
+		{
+			padOption = padOptions[2];
+			padOptionsCF.getChoice().select(padOption);
+			handlePadOptionsEvent(padOption);
+		}
+
 		gd.showDialog();
 
 		if (gd.wasCanceled())
@@ -564,7 +661,8 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 		bfpSet.filter = gd.getNextChoice();
 		bfpSet.filterCM = (float)gd.getNextNumber();		
 		bfpSet.filterGmPerCC = mmc.getAtomGmPerCC(bfpSet.filter);		
-		bfpSet.detFormula = gd.getNextString();
+		bfpSet.detFormula = gd.getNextString();//detector Filter
+		bfpSet.detFormula = gd.getNextString();//detector formula
 		bfpSet.detCM = 	(float)gd.getNextNumber();
 		bfpSet.detGmPerCC =	(float)gd.getNextNumber();
 		scale16= gd.getNextBoolean();
@@ -589,10 +687,6 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 		//the original image width, height, pixelSize and unit
 		originalWidth =ip.getWidth();
 		originalHeight =ip.getHeight();
-		if(originalHeight != originalWidth)
-		{
-			IJ.showMessage("Image must be Square. Check the PadImage Box in the next dialog");
-		}
 		
 		Calibration cal = imageImp.getCalibration();
 		unit = cal.getUnit().toUpperCase();
@@ -624,6 +718,10 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 			bfpSet.matlName = mlt.getTagSetMatlNamesAsArray(tagSet);
 			bfpSet.matlTag = mlt.getTagSetMatlTagAsArray(tagSet);
 		}
+
+		filteredMatlName=bfpSet.matlName;
+		filteredMatlFormula=bfpSet.matlFormula;
+		filteredMatlGmPerCC=bfpSet.matlGmPerCC;
 
 		if(doDialog())
 		{
@@ -677,20 +775,21 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 		formula = mmc.createFormulaList(bfpSet.detFormula);
 		if(formula==null) {IJ.error(bfpSet.detFormula + " Is not a valid detector material"); return false;}
 
-		//Test the numbers
-		if(bfpSet.kv < bfpSet.minKV){IJ.error("Source KV " + bfpSet.kv + " Must be greater than " + bfpSet.minKV + "KV"); return false;}
-		if(bfpSet.kv <=0){IJ.error("Source KV " + bfpSet.kv + " Must be greater than 0 KV"); return false;}
-		if(bfpSet.ma <=0){IJ.error("Source mA " + bfpSet.ma + " Must be greater than 0 mA"); return false;}
-		if(bfpSet.nBins <=0){IJ.error("Bin Count " + bfpSet.nBins + " Must be greater than 0"); return false;}
-		if(bfpSet.minKV > bfpSet.kv){IJ.error("Source minMV " + bfpSet.minKV + " Must be less than " + bfpSet.kv + "KV"); return false;}
-		if(bfpSet.filterCM < 0){IJ.error("Filter Thickness " + bfpSet.filterCM + " Cannot be negative"); return false;}
-		if(bfpSet.filterGmPerCC <= 0){IJ.error("Filter Density " + bfpSet.filterGmPerCC + " Cannot be negative"); return false;}
-
-		if(bfpSet.numAng < 1){IJ.error("Number of angles " + bfpSet.numAng + " Cannot be negative or zero"); return false;}
-		if(bfpSet.detCM <= 0){IJ.error("Detector Thickness " + bfpSet.detCM + " Cannot be negative"); return false;}
-		if(bfpSet.detGmPerCC <= 0){IJ.error("Detector Densith " + bfpSet.detCM + " Cannot be negative or zero"); return false;}
-
 		return true;
 	}
+	
+	//*******************************************************************************
 
+	public static boolean isNumeric(String str)
+	{ 
+		try
+		{  
+			Double.parseDouble(str);  
+			return true;
+		}
+		catch(NumberFormatException e)
+		{  
+			return false;  
+		}  
+	}
 }

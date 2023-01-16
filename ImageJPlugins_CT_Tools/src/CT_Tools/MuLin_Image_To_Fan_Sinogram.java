@@ -33,14 +33,15 @@ public class MuLin_Image_To_Fan_Sinogram implements PlugInFilter, DialogListener
 	final String myDialogTitle = "Fan Beam CTscan";
 	final String[] padOptions = {"None","Circumscribed", "Next Power of 2"};
 	final Color myColor = new Color(240,230,190);//slightly darker than buff
+	final Color errColor = new Color(255,100,0);
+	final Color white = new Color(255,255,255);
 	final Font myFont = new Font(Font.DIALOG, Font.BOLD, 12);
 	
 	//The class that does fan projection
 	FanProjectors fanPrj = new FanProjectors();	
 	//The nested class containing the simulator's user supplied parameters
 	FanParams fpSet =  new FanParams();
-	
-	
+		
 	//Globals
 	ImagePlus imageImp;
 	int originalWidth,originalHeight; //the width and height of the current image
@@ -61,8 +62,6 @@ public class MuLin_Image_To_Fan_Sinogram implements PlugInFilter, DialogListener
 	public boolean dialogItemChanged(GenericDialog gd, AWTEvent e)
 	{
 		boolean dialogOK = true;
-		double mag,srcToDet,axisToDet;
-		int detMinCnt,detPixCnt,numAngles;
 		String padChoice;
 		if(e!=null)
 		{
@@ -87,37 +86,28 @@ public class MuLin_Image_To_Fan_Sinogram implements PlugInFilter, DialogListener
 				{
 				case "magnification":
 				case "sourceToDetector":
-					srcToDet = srcToDetNF.getNumber();
-					mag = magnificationNF.getNumber();
-					axisToDet = getAxisToDet(mag,srcToDet);
-					detMinCnt = getMinDetCnt(originalWidth,mag,padChoice);
-					paddedWidth = getMinDetCnt(originalWidth,1,padChoice);
-					numAngles = getNumAngles(detMinCnt);
-					axisToDetMF.getLabel().setText("Axis to Detector = " + String.format("%.3f" + " cm", axisToDet));
-					//axisToDetNF.setNumber(axisToDet);
-					numAnglesNF.setNumber(numAngles);
-					detPixCntNF.setNumber(detMinCnt);					
-					detMinCntMF.getLabel().setText("Minimum Detector Width = " + detMinCnt + " pixels");				
-					paddedWidthMF.getLabel().setText("Padded Image Width = " + paddedWidth + " pixels");
-					if(mag<=1 || Double.isNaN(mag)) dialogOK=false;
-					break;
-					
+					dialogOK = handleSrcToDetEvent(padChoice);
+					break;					
 				case "detPixCnt":
-					mag = magnificationNF.getNumber();
-					detMinCnt = getMinDetCnt(originalWidth,mag,padChoice);
-					detPixCnt = (int) detPixCntNF.getNumber();
-					paddedWidth = (int)(detPixCnt/mag);
-					paddedWidthMF.getLabel().setText("Padded Image Width = " + paddedWidth + " pixels");				
-					if(detPixCnt< detMinCnt)
+					dialogOK = handleDetPixCntEvent(padChoice);
+					break;
+				case "numAngles":
+					int numAngles =(int)numAnglesNF.getNumber();
+					if(Double.isNaN(numAngles) || numAngles <1) dialogOK=false;						
+					break;
+				default:
+					//all of the others are numeric
+					String numStr = tf.getText();
+					if(!isNumeric(numStr)) dialogOK=false;
+					else
 					{
-						dialogOK = false;
+						double num = Double.valueOf(numStr);
+						if(num<0) dialogOK=false;
 					}
-					if(mag<=1 || Double.isNaN(mag)) dialogOK=false;
-					break;
-					
-				case "axisToDetector":
-					break;
+				break;
 				}			
+				if(!dialogOK) tf.setBackground(errColor);
+				else tf.setBackground(white);
 			}
 			
 			else if(src instanceof Choice)
@@ -128,26 +118,17 @@ public class MuLin_Image_To_Fan_Sinogram implements PlugInFilter, DialogListener
 				{
 				case "padOptions":
 					padChoice = choice.getSelectedItem();
-					mag = magnificationNF.getNumber();
-					detMinCnt = getMinDetCnt(originalWidth,mag,padChoice);
-					paddedWidth = getMinDetCnt(originalWidth,1,padChoice);
-					numAngles = getNumAngles(detMinCnt);
-					numAnglesNF.setNumber(numAngles);
-					detPixCntNF.setNumber(detMinCnt);					
-					detMinCntMF.getLabel().setText("Minimum Detector Width = " + detMinCnt + " pixels");				
-					paddedWidthMF.getLabel().setText("Padded Image Width = " + paddedWidth + " pixels");				
-					if(mag<1) dialogOK=false;
+					dialogOK = handlePadOptionsEvent( padChoice);
 					break;					
 				}
 			}
-
 		}
 		//GenericDialog OK button calls dialogItemChanged with null event
 		//GetSelections called so settings are macro recordable
 		getSelections();			
 		return dialogOK;
 	}
-
+	
 	//*******************************************************************************
 
 	private boolean doMyDialog()
@@ -202,6 +183,14 @@ public class MuLin_Image_To_Fan_Sinogram implements PlugInFilter, DialogListener
 
 		gd.addHelp("https://lazzyizzi.github.io/CTsimulator.html");	
 		gd.setBackground(myColor);
+		
+		if(originalWidth!= originalHeight)
+		{
+			padOption = padOptions[2];
+			padOptionsCF.getChoice().select(padOption);
+			handlePadOptionsEvent(padOption);
+		}
+
 		gd.showDialog();
 
 		if (gd.wasCanceled())
@@ -213,19 +202,14 @@ public class MuLin_Image_To_Fan_Sinogram implements PlugInFilter, DialogListener
 			return true;
 		}	
 	}
-		
-	//*******************************************************************************
 	
+	//*******************************************************************************
+
 	private void doRoutine()
 	{		
-		//ImagePlus sinoImp;
-		//getSelections();
 		Object image;
-
-
 		int nslices = imageImp.getNSlices();
 		float[] sinogram = null;
-
 		ArrayList<float[]> sinograms = new ArrayList<float[]>();
 		ImagePlus sinoImp;				
 
@@ -314,8 +298,6 @@ public class MuLin_Image_To_Fan_Sinogram implements PlugInFilter, DialogListener
 		IJ.run("Enhance Contrast", "saturated=0.35");	
 	}
 	
-	//*******************************************************************************
-
 	//Compute minimum detPixCnt, srcToSampCM,sampToDetCM and numAngles
 	//from 
 //	private double getMag(double axisToDet,double srcToDet)
@@ -327,6 +309,7 @@ public class MuLin_Image_To_Fan_Sinogram implements PlugInFilter, DialogListener
 		return srcToDet*(1-1/mag);
 	}
 	
+
 	//*******************************************************************************
 
 	//	private double getSrcToSamp(double mag, double srcToDet)
@@ -343,6 +326,9 @@ public class MuLin_Image_To_Fan_Sinogram implements PlugInFilter, DialogListener
 	 * @param padType "None", "Circumscribed","Next Power of 2"
 	 * @return
 	 */
+	
+	//*******************************************************************************
+
 	private int getMinDetCnt(int imageWidth, double mag, String padType)
 	{
 		int detMinCnt=0;
@@ -368,9 +354,9 @@ public class MuLin_Image_To_Fan_Sinogram implements PlugInFilter, DialogListener
 		//if ((detMinCnt ^ 1) == detMinCnt - 1)	detMinCnt++;	
 		return detMinCnt;
 	}
-	
+		
 	//*******************************************************************************
-
+	
 	/**
 	 * @param detMinCnt the detector width in pixels
 	 * @return numAngles
@@ -400,6 +386,88 @@ public class MuLin_Image_To_Fan_Sinogram implements PlugInFilter, DialogListener
 	
 	//*******************************************************************************
 
+	private boolean handleDetPixCntEvent(String padChoice)
+	{
+		boolean dialogOK = true;
+		double mag;
+		int detMinCnt,detPixCnt;
+
+		mag = magnificationNF.getNumber();
+		if(mag<=1 || Double.isNaN(mag))
+		{
+			dialogOK = false;
+		}
+		else
+		{
+			detMinCnt = getMinDetCnt(originalWidth,mag,padChoice);
+			detPixCnt = (int) detPixCntNF.getNumber();
+			paddedWidth = (int)(detPixCnt/mag);
+			paddedWidthMF.getLabel().setText("Padded Image Width = " + paddedWidth + " pixels");				
+			if(detPixCnt< detMinCnt)
+			{
+				dialogOK = false;
+			}
+		}
+		return dialogOK;		
+	}
+	
+	//*******************************************************************************
+
+	private boolean handlePadOptionsEvent(String padChoice)
+	{
+		double mag;
+		int detMinCnt,numAngles;
+
+		mag = magnificationNF.getNumber();
+		if(mag<=1 || Double.isNaN(mag))
+		{
+			return false;
+		}
+		else
+		{
+			detMinCnt = getMinDetCnt(originalWidth,mag,padChoice);
+			paddedWidth = getMinDetCnt(originalWidth,1,padChoice);
+			numAngles = getNumAngles(detMinCnt);
+			numAnglesNF.setNumber(numAngles);
+			detPixCntNF.setNumber(detMinCnt);					
+			detMinCntMF.getLabel().setText("Minimum Detector Width = " + detMinCnt + " pixels");				
+			paddedWidthMF.getLabel().setText("Padded Image Width = " + paddedWidth + " pixels");
+			return true;
+		}
+	}
+	
+	//*******************************************************************************
+
+	private boolean handleSrcToDetEvent(String padChoice)
+	{
+		boolean dialogOK =true;
+		double mag,srcToDet,axisToDet;
+		int detMinCnt,numAngles;
+
+		mag = magnificationNF.getNumber();
+		if(mag<=1 || Double.isNaN(mag))
+		{
+			dialogOK = false;
+		}		
+		else
+		{
+			srcToDet = srcToDetNF.getNumber();
+			mag = magnificationNF.getNumber();
+			axisToDet = getAxisToDet(mag,srcToDet);
+			detMinCnt = getMinDetCnt(originalWidth,mag,padChoice);
+			paddedWidth = getMinDetCnt(originalWidth,1,padChoice);
+			numAngles = getNumAngles(detMinCnt);
+			axisToDetMF.getLabel().setText("Axis to Detector = " + String.format("%.3f" + " cm", axisToDet));
+			numAnglesNF.setNumber(numAngles);
+			detPixCntNF.setNumber(detMinCnt);					
+			detMinCntMF.getLabel().setText("Minimum Detector Width = " + detMinCnt + " pixels");				
+			paddedWidthMF.getLabel().setText("Padded Image Width = " + paddedWidth + " pixels");
+		}
+		return dialogOK;		
+	}
+	
+	//*******************************************************************************
+
 	@Override
 	public void run(ImageProcessor ip)
 	{
@@ -409,13 +477,8 @@ public class MuLin_Image_To_Fan_Sinogram implements PlugInFilter, DialogListener
 			return;
 		}
 		
-		//the original image width and height
 		originalWidth =ip.getWidth();
 		originalHeight =ip.getHeight();
-		if(originalHeight != originalWidth)
-		{
-			IJ.showMessage("Image must be Square. Select a padding option in the Dialog.");
-		}
 		
 		Calibration cal = imageImp.getCalibration();
 		unit = cal.getUnit().toUpperCase();
@@ -431,7 +494,6 @@ public class MuLin_Image_To_Fan_Sinogram implements PlugInFilter, DialogListener
 			return;
 		}
 		
-		//fpSet.pixSizeCM = cal.pixelWidth;
 		pixelSize= cal.pixelWidth;
 		
 		if(doMyDialog())
@@ -462,13 +524,26 @@ public class MuLin_Image_To_Fan_Sinogram implements PlugInFilter, DialogListener
 			IJ.showMessage("Non-square images require a pad option.");
 			return false;
 		}
-		if(fpSet.numAng<1)
-		{
-			IJ.error("Image To Sinogram Error", "Images must have 1 or more view angles");
-			return false;
-		}
+//		if(fpSet.numAng<1)
+//		{
+//			IJ.error("Image To Sinogram Error", "Images must have 1 or more view angles");
+//			return false;
+//		}
 		
 		return true;
 	}
+	public static boolean isNumeric(String str)
+	{ 
+		try
+		{  
+			Double.parseDouble(str);  
+			return true;
+		}
+		catch(NumberFormatException e)
+		{  
+			return false;  
+		}  
+	}
+
 	
 }

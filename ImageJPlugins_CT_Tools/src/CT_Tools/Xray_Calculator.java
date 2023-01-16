@@ -49,6 +49,8 @@ import gray.AtomData.*;
 	final String resultsTitle = "Xray Calculator Results";
 	final int calcW=650,calcH=220;
 	final Color myColor = new Color(240,230,190);//slightly darker than buff
+	final Color errColor = new Color(255,100,0);
+	final Color white = new Color(255,255,255);
 	final Font myFont = new Font(Font.DIALOG, Font.ITALIC+Font.BOLD, 14);
 	
 	GenericDialog gd;
@@ -174,7 +176,7 @@ import gray.AtomData.*;
 		else if(gd.wasOKed())
 		{
 			//MMCsettings mmcSet = getSelections();
-			getRecordableSelections(gd);
+			getSelections();
 			UpdateResults();
 		
 		}
@@ -201,37 +203,12 @@ import gray.AtomData.*;
 
 	//*********************************************************************************/
 	
-	private boolean getSelections()
-	{
-		boolean dialogOK=true;
-		ds.formulaName = matlNameSF.getTextField().getText();
-		ds.formula = formulaSF.getTextField().getText();
-		ds.gmPerCC = gmPerCCNF.getNumber();
-		if(Double.isNaN(ds.gmPerCC))
-		{
-			dialogOK=false;
-		}
-		ds.meV = kevNF.getNumber();
-		if(Double.isNaN(ds.meV))
-		{
-			getKevBF.getButton().setEnabled(false);
-			dialogOK=false;
-		}
-		else
-		{
-			getKevBF.getButton().setEnabled(true);
-			ds.meV = ds.meV/1000;
-		}
-		useTabDensity = useTabDensCF.getCheckBox().getState();
-		return dialogOK;
-	}
 
-	//*********************************************************************************/
-
-	private void getRecordableSelections(GenericDialog gd)
+	private void getSelections()
 	{
 		gd.resetCounters();
 			try {
+				@SuppressWarnings("unused")
 				String filterStr = gd.getNextString();
 				ds.formulaName = gd.getNextString();
 				ds.formula = gd.getNextString();
@@ -318,7 +295,7 @@ import gray.AtomData.*;
 	
 	public boolean dialogItemChanged(GenericDialog gd, AWTEvent e)
 	{
-		boolean dialogOK = getSelections();;
+		boolean dialogOK = true; //getSelections();;
 
 		if(e!=null)
 		{
@@ -377,12 +354,52 @@ import gray.AtomData.*;
 						}
 					}
 					break;
+				case "gmPerCC":
+					//all of the others are numeric
+					String numStr = tf.getText();
+					if(!isNumeric(numStr)) dialogOK=false;
+					else
+					{
+						double num = Double.valueOf(numStr);
+						if(num<=0) dialogOK=false;
+					}
+					break;
+				case "kev":
+					String keVStr = tf.getText();
+					if(!isNumeric(keVStr)) dialogOK=false;
+					else
+					{
+						double keV = Double.valueOf(keVStr);
+						if(keV<1 || keV > 1e9) dialogOK=false;
+					}
+					break;
+				case "formula":
+					if(mmc.getMevArray(tf.getText())==null) dialogOK = false;
+					break;
+					
 				}
+				getKevBF.getButton().setEnabled(dialogOK);
+				if(dialogOK==false) tf.setBackground(errColor);										
+				else tf.setBackground(white);
+
 			}
 		}
 
-		dialogOK = getSelections();
-		if(dialogOK) getRecordableSelections(gd);
+		getSelections();
 		return dialogOK;
 	}
+	
+	public static boolean isNumeric(String str)
+	{ 
+		try
+		{  
+			Double.parseDouble(str);  
+			return true;
+		}
+		catch(NumberFormatException e)
+		{  
+			return false;  
+		}  
+	}
+
 }

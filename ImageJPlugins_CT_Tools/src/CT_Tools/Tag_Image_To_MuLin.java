@@ -3,18 +3,20 @@ package CT_Tools;
 import ij.IJ;
 import ij.ImagePlus;
 import ij.WindowManager;
+import ij.gui.DialogListener;
 import ij.gui.GenericDialog;
 import ij.measure.Calibration;
 import ij.plugin.filter.PlugInFilter;
 import ij.process.ImageProcessor;
+import jhd.ImageJAddins.GenericDialogAddin;
+import jhd.ImageJAddins.GenericDialogAddin.*;
 import jhd.MuMassCalculator.MuMassCalculator;
 import jhd.TagTools.*;
 
-import java.util.Vector;
 import java.awt.*;
 
 /** A plugin for converting tag images to linear attenuation*/
-public class Tag_Image_To_MuLin implements PlugInFilter
+public class Tag_Image_To_MuLin implements PlugInFilter, DialogListener
 {
 	MuMassCalculator mmc = new MuMassCalculator();
 	MatlListTools mlt = new MatlListTools();
@@ -23,11 +25,16 @@ public class Tag_Image_To_MuLin implements PlugInFilter
 	double keV=100;
 	
 	GenericDialog gd;
+	GenericDialogAddin gda;
+	NumericField keVNF;
+
 	Calibration cal;
 	ImagePlus imp;
 	ImageProcessor ip;
 	Font myFont = new Font(Font.DIALOG, Font.BOLD, 12);
 	final Color myColor = new Color(240,230,190);//slightly darker than buff
+	final Color errColor = new Color(255,100,0);
+	final Color white = new Color(255,255,255);
 	
 	//***********************************************************************************
 
@@ -53,21 +60,23 @@ public class Tag_Image_To_MuLin implements PlugInFilter
 		String dir = IJ.getDirectory("plugins");
 		String path = dir + "DialogData\\DefaultMaterials.csv";
 		myTagSet = mlt.loadTagFile(path);
-
-		//Get names array from TagSet
-		matlNames = new String[myTagSet.tagData.size()];
-		int i=0;
-		for(MatlListTools.TagData td : myTagSet.tagData)
+		if(myTagSet==null)
 		{
-			matlNames[i]= td.matlName;
-			i++;
+			IJ.error("The tagSet at " + path + " failed to load.");
 		}
 		
-		if(myTagSet!=null)
+		else
 		{
+			//Get names array from TagSet
+			matlNames = mlt.getTagSetMatlNamesAsArray(myTagSet);
+			gda = new GenericDialogAddin();
+			
 			gd = new GenericDialog("Convert Tags to MuLin");
-			gd.addMessage("Select and energy.\nClick \"Convert\"",myFont,Color.BLACK);
+			gd.addDialogListener(this);
+			
+			gd.addMessage("Enter an energy between\n1 and 10^9 keV.\nClick \"OK\"",myFont,Color.BLACK);
 			gd.addNumericField("KeV:", keV);
+			keVNF = gda.getNumericField(gd, null, "keV");
 			gd.addHelp("https://lazzyizzi.github.io/TagsToMuLin.html");
 			gd.setBackground(myColor);
 			gd.showDialog();
@@ -78,7 +87,12 @@ public class Tag_Image_To_MuLin implements PlugInFilter
 			}
 			else
 			{
-				GetSelections();
+				getSelections();
+				if(Double.isNaN(keV) || keV < 1 || keV >1e9)
+				{
+					IJ.error("keV input error","Energy range 1 keV to 100 GeV");
+					return;
+				}
 				ImagePlus tauImp = imp.duplicate();
 				String title = imp.getTitle();
 				if(title.endsWith(".tif"))
@@ -92,7 +106,7 @@ public class Tag_Image_To_MuLin implements PlugInFilter
 						
 				title = WindowManager.getUniqueName(title);
 				tauImp.setTitle(title);
-				for(i=1;i<=tauImp.getNSlices();i++)
+				for(int i=1;i<=tauImp.getNSlices();i++)
 				{
 					tauImp.setSlice(i);
 					float[] tauPix = (float[])tauImp.getProcessor().getPixels();
@@ -108,13 +122,11 @@ public class Tag_Image_To_MuLin implements PlugInFilter
 	//***********************************************************************************
 
 	//@SuppressWarnings("unchecked")
-	private void GetSelections()
+	private void getSelections()
 	{
-//		Vector<TextField> numbers = gd.getNumericFields();
-//		String str= numbers.get(0).getText();
-//		if(isNumeric(str))	keV =  Float.valueOf(str);
 		keV = gd.getNextNumber();
 	}
+	
 	public static boolean isNumeric(String str)
 	{ 
 		try
@@ -126,6 +138,37 @@ public class Tag_Image_To_MuLin implements PlugInFilter
 		{  
 			return false;  
 		}  
+	}
+
+	@Override
+	public boolean dialogItemChanged(GenericDialog gd, AWTEvent e)
+	{
+		boolean dialogOK=true;
+		if(e!=null)
+		{
+			Object src = e.getSource();
+			if(src instanceof TextField)
+			{
+				TextField tf = (TextField)src;
+				String name = tf.getName();
+				switch(name)
+				{
+				case "keV":
+					String keVStr = tf.getText();
+					if(!isNumeric(keVStr)) dialogOK=false;
+					else
+					{
+						double keV = Double.valueOf(keVStr);
+						if(keV<1 || keV > 1e9) dialogOK=false;
+					}
+					break;
+				}
+				if(!dialogOK) tf.setBackground(errColor);
+				else tf.setBackground(white);
+			}
+		}
+		getSelections();
+		return dialogOK;
 	}
 
 }

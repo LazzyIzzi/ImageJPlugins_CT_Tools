@@ -37,6 +37,15 @@ import jhd.TagTools.MatlListTools.*;
 public class Xray_Lookup_Ratio implements PlugIn, ActionListener, DialogListener
 {
 
+	final String myDialogTitle = "X-Ray Lookup Ratio";
+	final String resultsTitle = "KeV Ratio Solutions";
+	final int calcW=850,calcH=230;
+	//final Color buff = new Color(250,240,200);
+	final Font myFont = new Font(Font.DIALOG, Font.ITALIC+Font.BOLD, 14);
+	final Color myColor = new Color(240,230,190);//slightly darker than buff
+	final Color errColor = new Color(255,100,0);
+	final Color white = new Color(255,255,255);
+	
 	MuMassCalculator mmc= new MuMassCalculator();
 	MatlListTools mlt=new MatlListTools();
 	TagSet tagSet;
@@ -49,12 +58,6 @@ public class Xray_Lookup_Ratio implements PlugIn, ActionListener, DialogListener
 	String[] filteredFormulas1,filteredFormulas2;
 	double[] filteredGmPerCC1,filteredGmPerCC2;
 	
-	final String myDialogTitle = "X-Ray Lookup Ratio";
-	final String resultsTitle = "KeV Ratio Solutions";
-	final int calcW=850,calcH=230;
-	//final Color buff = new Color(250,240,200);
-	final Font myFont = new Font(Font.DIALOG, Font.ITALIC+Font.BOLD, 14);
-	final Color myColor = new Color(240,230,190);//slightly darker than buff
 
 	GenericDialog gd;
 	int dlogW,dlogH,dlogL,dlogT;
@@ -189,7 +192,7 @@ public class Xray_Lookup_Ratio implements PlugIn, ActionListener, DialogListener
 //		gd.addNumericField("Density_2 observed for Formula_2",  ds.gmPerCCR2);
 //		gmPerCC2NF = gda.getNumericField(gd, null, "gmPerCC2");
 		gd.addNumericField("Density_2 observed for Formula_2", ds.gmPerCCR2,4,8,"gm/cc");
-		gmPerCC2NF = gda.getNumericField2(gd, null, null, "gmPerCC1");
+		gmPerCC2NF = gda.getNumericField2(gd, null, null, "gmPerCC2");
 
 		gd.addNumericField("Brightness_2 observed for Formula_2", ds.attnR2);
 		brightness2NF = gda.getNumericField(gd, null, "brightness2");
@@ -227,7 +230,7 @@ public class Xray_Lookup_Ratio implements PlugIn, ActionListener, DialogListener
 		}
 		if (gd.wasOKed())
 		{
-			getRecordableSelections(gd);
+			getSelections();
 			if(ds!=null)
 			{
 				double[] ratioResult = mmc.getMeVfromMuLinRatio(ds.formulaR1, ds.attnR1, ds.gmPerCCR1, ds.formulaR2, ds.attnR2, ds.gmPerCCR2, "TotAttn");
@@ -278,9 +281,10 @@ public class Xray_Lookup_Ratio implements PlugIn, ActionListener, DialogListener
 
 	//*********************************************************************************/
 	
-	private void getRecordableSelections(GenericDialog gd)
+	private void getSelections()
 	{
 		gd.resetCounters();
+		useTabDensity = gd.getNextBoolean();
 		String filterStr1 = gd.getNextString(); 
 		ds.formulaName1 = gd.getNextString();
 		ds.formulaR1 = gd.getNextString();
@@ -291,53 +295,7 @@ public class Xray_Lookup_Ratio implements PlugIn, ActionListener, DialogListener
 		ds.formulaName2 = gd.getNextString();
 		ds.formulaR2 = gd.getNextString();
 		ds.gmPerCCR2 = gd.getNextNumber();
-		ds.attnR2 = gd.getNextNumber();		
-	}
-
-	//*********************************************************************************/
-	
-	private boolean getSelections()
-	{
-		boolean paramsOK = true;
-
-		try
-		{
-			ds.formulaName1 = name1SF.getTextField().getText();
-			ds.formulaR1 = formula1SF.getTextField().getText();
-			ds.gmPerCCR1 = gmPerCC1NF.getNumber();
-			ds.attnR1 = brightness1NF.getNumber();
-
-			ds.formulaName2 = name2SF.getTextField().getText();
-			ds.formulaR2 = formula2SF.getTextField().getText();
-			ds.gmPerCCR2 = gmPerCC2NF.getNumber();
-			ds.attnR2 = brightness2NF.getNumber();
-			useTabDensity = useTabDensCF.getCheckBox().getState();
-			if(mmc.getMevArray(ds.formulaR1)==null)
-			{
-				IJ.showMessage("Error", ds.formulaR1 + " Bad Formula, Element or count missing");
-				paramsOK = false;
-			}
-			if(mmc.getMevArray(ds.formulaR2)==null)
-			{
-				IJ.showMessage("Error", ds.formulaR2 + " Bad Formula, Element or count missing");
-				paramsOK = false;
-			}
-
-			if(Double.isNaN(ds.gmPerCCR1) || Double.isNaN(ds.gmPerCCR2) ||
-					Double.isNaN(ds.attnR1) || Double.isNaN(ds.attnR2))
-			{
-				paramsOK = false;
-			}
-
-		}
-		catch (Exception e)
-		{
-			IJ.showMessage("Error", "To record, the Macro Recorder must be open before\nlaunching the X-ray Calculator Plugin");
-			paramsOK = false;
-		}
-		getKevBF.getButton().setEnabled(paramsOK);
-
-		return paramsOK;
+		ds.attnR2 = gd.getNextNumber();
 	}
 
 	//*********************************************************************************/
@@ -434,7 +392,7 @@ public class Xray_Lookup_Ratio implements PlugIn, ActionListener, DialogListener
 		dlogL = gd.getLocation().x;
 		dlogT = gd.getLocation().y;
 		//getSelections();
-		if(getSelections())
+		getSelections();//		if(getSelections())
 		{
 			String cmd = theEvent.getActionCommand();
 			switch(cmd)
@@ -476,113 +434,145 @@ public class Xray_Lookup_Ratio implements PlugIn, ActionListener, DialogListener
 
 	public boolean dialogItemChanged(GenericDialog gd, AWTEvent e)
 	{
-		boolean	dlogOK = getSelections();
-		
+		//boolean	dlogOK = getSelections();
+		boolean	dialogOK = true;
+
 		if(e!=null)
 		{
-			if(dlogOK)
+			if(e.getSource() instanceof Choice)
 			{
-				if(e.getSource() instanceof Choice)
+				Choice choice = (Choice)e.getSource();
+				String name = choice.getName();
+				switch(name)
 				{
-					Choice choice = (Choice)e.getSource();
-					String name = choice.getName();
-					switch(name)
+				case "materialChoice1":
+					int index;
+					index =  matlName1CF.getChoice().getSelectedIndex();				
+					name1SF.getTextField().setText(filteredMatlNames1[index]);
+					formula1SF.getTextField().setText(filteredFormulas1[index]);
+					if(useTabDensity)
 					{
-					case "materialChoice1":
-						int index;
-						index =  matlName1CF.getChoice().getSelectedIndex();				
-						name1SF.getTextField().setText(filteredMatlNames1[index]);
-						formula1SF.getTextField().setText(filteredFormulas1[index]);
-						if(useTabDensity)
-						{
-							gmPerCC1NF.setNumber(filteredGmPerCC1[index]);
-						}
-						break;
-					case "materialChoice2":
-						index = matlName2CF.getChoice().getSelectedIndex();		
-						name2SF.getTextField().setText(filteredMatlNames2[index]);
-						formula2SF.getTextField().setText(filteredFormulas2[index]);
-						if(useTabDensity)
-						{
-							gmPerCC2NF.setNumber(filteredGmPerCC2[index]);
-						}
-						break;
+						gmPerCC1NF.setNumber(filteredGmPerCC1[index]);
 					}
+					break;
+				case "materialChoice2":
+					index = matlName2CF.getChoice().getSelectedIndex();		
+					name2SF.getTextField().setText(filteredMatlNames2[index]);
+					formula2SF.getTextField().setText(filteredFormulas2[index]);
+					if(useTabDensity)
+					{
+						gmPerCC2NF.setNumber(filteredGmPerCC2[index]);
+					}
+					break;
 				}
-				else if(e.getSource() instanceof TextField)
-				{					
-					TextField tf = (TextField) e.getSource();
-					String name = tf.getName();
-					String filterStr = tf.getText();
-					switch(name)
-					{
-					case "filter1":
-						TagSet filteredTagData1 = mlt.filterTagData(tagSet, filterStr);
-						if(filterStr.equals(""))
-						{
-							//copy the original arrays into the filtered arrays
-							filteredMatlNames1 = matlName;
-							filteredFormulas1 = matlFormula;
-							filteredGmPerCC1 =matlGmPerCC;
-						}
-						else
-						{
-							filteredMatlNames1 = mlt.getTagSetMatlNamesAsArray(filteredTagData1);
-							filteredFormulas1 = mlt.getTagSetMatlFormulasAsArray(filteredTagData1);
-							filteredGmPerCC1 =mlt.getTagSetMatlGmPerccAsArray(filteredTagData1);
-						}
-						matlName1CF.getChoice().setVisible(false);
-						matlName1CF.getChoice().removeAll();
-						matlName1CF.setChoices(filteredMatlNames1);
-						matlName1CF.getChoice().setVisible(true);
-						if(filteredMatlNames1.length>0)
-						{
-							matlName1CF.getChoice().select(0);
-							name1SF.getTextField().setText(filteredMatlNames1[0]);
-							formula1SF.getTextField().setText(filteredFormulas1[0]);
-							if(useTabDensity)
-							{
-								gmPerCC1NF.setNumber(filteredGmPerCC1[0]);
-							}
-						}
-						break;
-					case "filter2":
-						TagSet filteredTagData2 = mlt.filterTagData(tagSet, filterStr);
-						if(filterStr.equals(""))
-						{
-							//copy the original arrays into the filtered arrays
-							filteredMatlNames2 = matlName;
-							filteredFormulas2 = matlFormula;
-							filteredGmPerCC2 =matlGmPerCC;
-						}
-						else
-						{
-							filteredMatlNames2 = mlt.getTagSetMatlNamesAsArray(filteredTagData2);
-							filteredFormulas2 = mlt.getTagSetMatlFormulasAsArray(filteredTagData2);
-							filteredGmPerCC2 =mlt.getTagSetMatlGmPerccAsArray(filteredTagData2);
-						}
-						matlName2CF.getChoice().setVisible(false);
-						matlName2CF.getChoice().removeAll();
-						matlName2CF.setChoices(filteredMatlNames2);
-						matlName2CF.getChoice().setVisible(true);
-						if(filteredMatlNames2.length>0)
-						{
-							matlName2CF.getChoice().select(0);
-							name2SF.getTextField().setText(filteredMatlNames2[0]);
-							formula2SF.getTextField().setText(filteredFormulas2[0]);
-							if(useTabDensity)
-							{
-								gmPerCC2NF.setNumber(filteredGmPerCC2[0]);
-							}
-						}
-						break;						
-					}
-				}				
 			}
+			else if(e.getSource() instanceof TextField)
+			{					
+				TextField tf = (TextField) e.getSource();
+				String name = tf.getName();					
+				String filterStr = tf.getText();
+				switch(name)
+				{
+				case "filter1":
+					TagSet filteredTagData1 = mlt.filterTagData(tagSet, filterStr);
+					if(filterStr.equals(""))
+					{
+						//copy the original arrays into the filtered arrays
+						filteredMatlNames1 = matlName;
+						filteredFormulas1 = matlFormula;
+						filteredGmPerCC1 =matlGmPerCC;
+					}
+					else
+					{
+						filteredMatlNames1 = mlt.getTagSetMatlNamesAsArray(filteredTagData1);
+						filteredFormulas1 = mlt.getTagSetMatlFormulasAsArray(filteredTagData1);
+						filteredGmPerCC1 =mlt.getTagSetMatlGmPerccAsArray(filteredTagData1);
+					}
+					matlName1CF.getChoice().setVisible(false);
+					matlName1CF.getChoice().removeAll();
+					matlName1CF.setChoices(filteredMatlNames1);
+					matlName1CF.getChoice().setVisible(true);
+					if(filteredMatlNames1.length>0)
+					{
+						matlName1CF.getChoice().select(0);
+						name1SF.getTextField().setText(filteredMatlNames1[0]);
+						formula1SF.getTextField().setText(filteredFormulas1[0]);
+						if(useTabDensity)
+						{
+							gmPerCC1NF.setNumber(filteredGmPerCC1[0]);
+						}
+					}
+					break;
+				case "filter2":
+					TagSet filteredTagData2 = mlt.filterTagData(tagSet, filterStr);
+					if(filterStr.equals(""))
+					{
+						//copy the original arrays into the filtered arrays
+						filteredMatlNames2 = matlName;
+						filteredFormulas2 = matlFormula;
+						filteredGmPerCC2 =matlGmPerCC;
+					}
+					else
+					{
+						filteredMatlNames2 = mlt.getTagSetMatlNamesAsArray(filteredTagData2);
+						filteredFormulas2 = mlt.getTagSetMatlFormulasAsArray(filteredTagData2);
+						filteredGmPerCC2 =mlt.getTagSetMatlGmPerccAsArray(filteredTagData2);
+					}
+					matlName2CF.getChoice().setVisible(false);
+					matlName2CF.getChoice().removeAll();
+					matlName2CF.setChoices(filteredMatlNames2);
+					matlName2CF.getChoice().setVisible(true);
+					if(filteredMatlNames2.length>0)
+					{
+						matlName2CF.getChoice().select(0);
+						name2SF.getTextField().setText(filteredMatlNames2[0]);
+						formula2SF.getTextField().setText(filteredFormulas2[0]);
+						if(useTabDensity)
+						{
+							gmPerCC2NF.setNumber(filteredGmPerCC2[0]);
+						}
+					}
+					break;
+				case "gmPerCC1":
+				case "gmPerCC2":
+				case "brightness1":
+				case "brightness2":
+					//all of the others are numeric
+					String numStr = tf.getText();
+					if(!isNumeric(numStr)) dialogOK=false;
+					else
+					{
+						double num = Double.valueOf(numStr);
+						if(num<=0) dialogOK=false;
+					}
+					break;
+				case "formula1":
+				case "formula2":
+					if(mmc.getMevArray(tf.getText())==null) dialogOK = false;
+					break;
+				}
+				getKevBF.getButton().setEnabled(dialogOK);
+				if(dialogOK==false) tf.setBackground(errColor);										
+				else tf.setBackground(white);
+			}				
 		}
 		//GenericDialog OK button calls dialogItemChanged with a null event
 		//Macro recording requires calls to GenericDialog.getNext...() methods
-		getRecordableSelections(gd);
-		return dlogOK;
+		getSelections();
+		return dialogOK;
 	}
+	
+	public static boolean isNumeric(String str)
+	{ 
+		try
+		{  
+			Double.parseDouble(str);  
+			return true;
+		}
+		catch(NumberFormatException e)
+		{  
+			return false;  
+		}  
+	}
+
 }

@@ -60,11 +60,13 @@ public class Xray_Lookup_MuLin implements PlugIn, ActionListener, DialogListener
 	GenericDialog gd;
 	GenericDialogAddin gda = new GenericDialogAddin();
 	ChoiceField matlNameCF;
-	NumericField densityNF;	
+	NumericField densityNF,muLinNF;	
 	StringField matlNameSF,formulaSF;
 	ButtonField getKevBF;
 	
 	final Color myColor = new Color(240,230,190);//slightly darker than buff
+	final Color errColor = new Color(255,100,0);
+	final Color white = new Color(255,255,255);
 	Font myFont = new Font(Font.DIALOG, Font.ITALIC+Font.BOLD, 14);
 
 		
@@ -81,8 +83,8 @@ public class Xray_Lookup_MuLin implements PlugIn, ActionListener, DialogListener
 		switch(cmd)
 		{
 		case "Get keV":
-			if(ValidateParams())
-			{
+//			if(ValidateParams())
+//			{
 				double[] mevResult = mmc.getMeVfromMuLin(ds.formula, ds.attn, ds.gmPerCC, "TotAttn");
 				ResultsTable rt = prepareResults(mevResult);
 				rt.show(resultsTitle);
@@ -92,7 +94,7 @@ public class Xray_Lookup_MuLin implements PlugIn, ActionListener, DialogListener
 				//Scroll to current result
 				TextPanel txtPnl = (TextPanel)win.getComponent(0);
 				txtPnl.showRow(txtPnl.getLineCount());				
-			}
+//			}
 			break;
 		}
 	}
@@ -101,7 +103,7 @@ public class Xray_Lookup_MuLin implements PlugIn, ActionListener, DialogListener
 	
 	public boolean dialogItemChanged(GenericDialog gd, AWTEvent e)
 	{
-		boolean dlogOK = true;
+		boolean dialogOK = true;
 
 	
 		if(e!=null)
@@ -125,18 +127,34 @@ public class Xray_Lookup_MuLin implements PlugIn, ActionListener, DialogListener
 					break;
 				}
 			}
-			else if(e.getSource() instanceof TextField)
+			else if(src instanceof TextField)
 			{
-				if(Double.isNaN(densityNF.getNumber()))
+				TextField tf = (TextField)src;
+				String name = tf.getName();
+				switch(name)
 				{
-					getKevBF.getButton().setEnabled(false);
-					dlogOK=false;
+				case "formula":
+					if(mmc.getMevArray(tf.getText())==null) dialogOK = false;
+				break;
+				case "density":
+				case "muLin":
+					//all of the others are numeric
+					String numStr = tf.getText();
+					if(!isNumeric(numStr)) dialogOK=false;
+					else
+					{
+						double num = Double.valueOf(numStr);
+						if(num<=0) dialogOK=false;
+					}
+					break;
 				}
-				else getKevBF.getButton().setEnabled(true);
+				getKevBF.getButton().setEnabled(dialogOK);
+				if(dialogOK==false) tf.setBackground(errColor);										
+				else tf.setBackground(white);
 			}				
 		}
 		getSelections();
-		return dlogOK;
+		return dialogOK;
 	}
 	
 	//*********************************************************************************/
@@ -164,6 +182,7 @@ public class Xray_Lookup_MuLin implements PlugIn, ActionListener, DialogListener
 		gd.addNumericField("Density:", ds.gmPerCC,4,8,"gm/cc");
 		densityNF = gda.getNumericField2(gd, null,null, "density");
 		gd.addNumericField("Observed_cm-1", ds.attn);
+		muLinNF = gda.getNumericField(gd, null, "muLin");
 		gd.setInsets(0, 250, 0);
 		gd.addButton("Get keV", this);
 		getKevBF = gda.getButtonField(gd, "getKev");
@@ -201,8 +220,8 @@ public class Xray_Lookup_MuLin implements PlugIn, ActionListener, DialogListener
 			getSelections();
 			if(ds !=null)
 			{
-				if (ValidateParams())
-				{
+//				if (ValidateParams())
+//				{
 					double[] meVresult = mmc.getMeVfromMuLin(ds.formula, ds.attn, ds.gmPerCC, "TotAttn");
 					ResultsTable rt = prepareResults(meVresult);
 					rt.show(resultsTitle);
@@ -216,7 +235,7 @@ public class Xray_Lookup_MuLin implements PlugIn, ActionListener, DialogListener
 					TextPanel txtPnl = (TextPanel)win.getComponent(0);
 					txtPnl.showRow(txtPnl.getLineCount());
 				}
-			}
+//			}
 		}				
 	}
 
@@ -365,50 +384,64 @@ public class Xray_Lookup_MuLin implements PlugIn, ActionListener, DialogListener
 }
 	
 	//*********************************************************************************/
-	
-	@SuppressWarnings("deprecation")
-	private void showKeyEvent(KeyEvent e, String eventType)
-	{
-		IJ.log(eventType);
-		int keyCode = e.getKeyCode();
-		IJ.log("KeyCode=" + keyCode);
-
-		int modifiersEx = e.getModifiersEx();
-		IJ.log("extended modifiers = " + modifiersEx);
-		
-		String keyModifiers = KeyEvent.getKeyModifiersText(modifiersEx);
-		IJ.log(keyModifiers);
-
-		String actionString = "action key? ";
-		if (e.isActionKey()) actionString += "YES";
-		else actionString += "NO";       
-		IJ.log(actionString);
-
-		String locationString = "key location: ";      
-		int location = e.getKeyLocation();
-		if (location == KeyEvent.KEY_LOCATION_STANDARD) locationString += "standard";
-		else if (location == KeyEvent.KEY_LOCATION_LEFT) locationString += "left";
-		else if (location == KeyEvent.KEY_LOCATION_RIGHT) locationString += "right";
-		else if (location == KeyEvent.KEY_LOCATION_NUMPAD) locationString += "numpad";
-		else locationString += "unknown";           
-		IJ.log(locationString);
-		
-		IJ.log("*****************************");
-
-	}
-
+//	
+//	@SuppressWarnings("deprecation")
+//	private void showKeyEvent(KeyEvent e, String eventType)
+//	{
+//		IJ.log(eventType);
+//		int keyCode = e.getKeyCode();
+//		IJ.log("KeyCode=" + keyCode);
+//
+//		int modifiersEx = e.getModifiersEx();
+//		IJ.log("extended modifiers = " + modifiersEx);
+//		
+//		String keyModifiers = KeyEvent.getKeyModifiersText(modifiersEx);
+//		IJ.log(keyModifiers);
+//
+//		String actionString = "action key? ";
+//		if (e.isActionKey()) actionString += "YES";
+//		else actionString += "NO";       
+//		IJ.log(actionString);
+//
+//		String locationString = "key location: ";      
+//		int location = e.getKeyLocation();
+//		if (location == KeyEvent.KEY_LOCATION_STANDARD) locationString += "standard";
+//		else if (location == KeyEvent.KEY_LOCATION_LEFT) locationString += "left";
+//		else if (location == KeyEvent.KEY_LOCATION_RIGHT) locationString += "right";
+//		else if (location == KeyEvent.KEY_LOCATION_NUMPAD) locationString += "numpad";
+//		else locationString += "unknown";           
+//		IJ.log(locationString);
+//		
+//		IJ.log("*****************************");
+//
+//	}
+//
 	//*********************************************************************************/
 
-	private boolean ValidateParams()
-	{
-		boolean paramsOK = true;
-		//check the user formulas for validity
-		if(mmc.getMevArray(ds.formula)==null)
-		{
-			IJ.showMessage("Error", ds.formula + " Bad Formula, Element or count missing");
-			paramsOK = false;
-		}		
-		return paramsOK;
+//	private boolean ValidateParams()
+//	{
+//		boolean paramsOK = true;
+//		//check the user formulas for validity
+//		if(mmc.getMevArray(ds.formula)==null)
+//		{
+//			IJ.showMessage("Error", ds.formula + " Bad Formula, Element or count missing");
+//			paramsOK = false;
+//		}		
+//		return paramsOK;
+//	}
+	
+	public static boolean isNumeric(String str)
+	{ 
+		try
+		{  
+			Double.parseDouble(str);  
+			return true;
+		}
+		catch(NumberFormatException e)
+		{  
+			return false;  
+		}  
 	}
+
 
 }

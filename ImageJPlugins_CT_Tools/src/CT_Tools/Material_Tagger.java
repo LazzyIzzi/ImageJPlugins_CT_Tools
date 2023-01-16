@@ -77,7 +77,7 @@ public class Material_Tagger implements PlugInFilter, DialogListener, ActionList
 		}
 
 		Calibration cal = grayImp.getCalibration();
-		if(!cal.getUnit().equals("cm"))
+		if(!cal.getUnit().toUpperCase().equals("CM"))
 		{
 			IJ.error("Pixel units must be cm");
 			return;

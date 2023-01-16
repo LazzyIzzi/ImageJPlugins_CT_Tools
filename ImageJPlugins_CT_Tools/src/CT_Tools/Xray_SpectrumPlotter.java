@@ -52,6 +52,11 @@ import jhd.TagTools.MatlListTools.TagSet;
 
 public class Xray_SpectrumPlotter implements PlugIn, ActionListener, DialogListener
 {
+	final Font myFont = new Font(Font.DIALOG, Font.ITALIC+Font.BOLD, 14);
+	//The background color for the GenericDialog just because I like it.
+	final Color myColor = new Color(240,230,190);//slightly darker than buff
+	final Color errColor = new Color(255,100,0);
+	final Color white = new Color(255,255,255);
 	//class used to hold the dialog settings. 
 	private class DlogSettings
 	{
@@ -65,6 +70,8 @@ public class Xray_SpectrumPlotter implements PlugIn, ActionListener, DialogListe
 		boolean plotMuMassLogScale;
 		boolean reportEdges;
 	}
+	DlogSettings ds = new DlogSettings();
+	
 	MuMassCalculator mmc= new MuMassCalculator();
 	String[] mmTypes;//holds a list of cross-section types Total, Compton etc.
 
@@ -81,10 +88,6 @@ public class Xray_SpectrumPlotter implements PlugIn, ActionListener, DialogListe
 	GenericDialog gd;
 	int dlogW,dlogH,dlogL,dlogT;
 	String myDialogTitle = "Mu Mass Spectrum";
-	Font myFont = new Font(Font.DIALOG, Font.ITALIC+Font.BOLD, 14);
-	//The background color for the GenericDialog just because I like it.
-	final Color myColor = new Color(240,230,190);//slightly darker than buff
-	DlogSettings ds = new DlogSettings();
 
 	//For the plots
 	String plotTitle = "Mass Attenuation";
@@ -96,6 +99,7 @@ public class Xray_SpectrumPlotter implements PlugIn, ActionListener, DialogListe
 	StringField filterSF,formulaSF,matlNameSF;	
 	ChoiceField matlNameCF;
 	ButtonField updateBF,editBtnBF;
+	NumericField minKeVNF,maxKeVNF;
 	
 	@Override
 	public void actionPerformed(ActionEvent theEvent)
@@ -151,6 +155,7 @@ public class Xray_SpectrumPlotter implements PlugIn, ActionListener, DialogListe
 				TextField tf = (TextField) e.getSource();
 				String name = tf.getName();
 				String filterStr = tf.getText();
+				double minKev,maxKev;
 				switch(name)
 				{
 				case "filter":
@@ -178,7 +183,45 @@ public class Xray_SpectrumPlotter implements PlugIn, ActionListener, DialogListe
 					}
 					break;
 				case "formula":
-					if(formulaSF.getTextField().getText().equals("")) dialogOK=false;
+					String formula = formulaSF.getTextField().getText();
+					double[] mevList = mmc.getMevArray(formula);
+					if(mevList==null)
+					{
+						dialogOK=false;
+						updateBF.getButton().setEnabled(false);	
+					}
+					else updateBF.getButton().setEnabled(true);	
+					break;
+				case "minKeV":
+					String minStr = tf.getText();
+					maxKev = maxKeVNF.getNumber();
+					if(!isNumeric(minStr) || Double.isNaN(maxKev)) dialogOK=false;
+					else
+					{
+						minKev = Double.valueOf(minStr);
+						if(minKev<1 || minKev > maxKev || minKev > 1e9) dialogOK=false;
+					}
+					break;
+				case "maxKeV":
+					String maxStr = tf.getText();
+					minKev = minKeVNF.getNumber();
+					if(!isNumeric(maxStr) || Double.isNaN(minKev)) dialogOK=false;
+					else
+					{
+						maxKev = Double.valueOf(maxStr);
+						if(maxKev>1e9 || maxKev < minKev || maxKev <1) dialogOK=false;
+					}
+					break;
+				}
+				if(!dialogOK)
+				{
+					tf.setBackground(errColor);
+					updateBF.getButton().setEnabled(false);	
+				}
+				else
+				{
+					tf.setBackground(white);
+					updateBF.getButton().setEnabled(true);	
 				}
 			}
 		}
@@ -219,7 +262,9 @@ public class Xray_SpectrumPlotter implements PlugIn, ActionListener, DialogListe
 		
 		gd.addMessage("Energy Range", myFont);
 		gd.addNumericField("Min keV", 1,12);
+		minKeVNF=gda.getNumericField(gd, null, "minKeV");
 		gd.addNumericField("Max keV", 100000000,12);
+		maxKeVNF=gda.getNumericField(gd, null, "maxKeV");
 		gd.addCheckbox("Plot_keV Log scale", true);
 		gd.addCheckbox("Plot_cm2/gm on Log scale", true);
 		gd.addCheckbox("List absorption edge energies", false);
@@ -605,11 +650,6 @@ public class Xray_SpectrumPlotter implements PlugIn, ActionListener, DialogListe
 			IJ.showMessage("Error", ds.formula + " Bad Formula, Element or count missing");
 			paramsOK = false;
 		}
-		if(ds.minMeV < 0.001 || ds.maxMeV > 100000 || Double.isNaN(ds.minMeV)|| Double.isNaN(ds.maxMeV))
-		{
-			IJ.showMessage("Error:  keV Out of range  1 < keV < 100,000,000");
-			paramsOK = false;
-		}
 		
 		if(paramsOK)
 		{
@@ -622,4 +662,20 @@ public class Xray_SpectrumPlotter implements PlugIn, ActionListener, DialogListe
 
 		return paramsOK;
 	}
+	
+	//*********************************************************************************/
+
+	public static boolean isNumeric(String str)
+	{ 
+		try
+		{  
+			Double.parseDouble(str);  
+			return true;
+		}
+		catch(NumberFormatException e)
+		{  
+			return false;  
+		}  
+	}
+
 }

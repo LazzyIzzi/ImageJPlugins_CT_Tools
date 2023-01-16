@@ -5,20 +5,30 @@ import java.awt.Choice;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.TextField;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Vector;
 
+import ij.IJ;
 import ij.ImagePlus;
+import ij.WindowManager;
 import ij.gui.GenericDialog;
 import ij.gui.DialogListener;
 import ij.measure.ResultsTable;
-import ij.plugin.filter.PlugInFilter;
+import ij.plugin.PlugIn;
+//import ij.plugin.filter.PlugInFilter;
 import ij.process.ImageProcessor;
+import jhd.ImageJAddins.GenericDialogAddin;
+import jhd.ImageJAddins.GenericDialogAddin.*;
 
-public class Apply_Linearization implements PlugInFilter, DialogListener
+public class Apply_Linearization implements PlugIn, DialogListener
 {
 	final int numFldDigits = 6;
-	int numFldCols = numFldDigits + 4;	
-	double[][] coeffs;	
+	int numFldCols = numFldDigits + 4;
+	String[] paramChoices;
+	double[][] coeffs;
+	Object sinoData;
+	
 	Vector<TextField> numTxtFldVector;
 	Font myFont = new Font(Font.DIALOG, Font.BOLD, 12);
 	final Color myColor = new Color(240,230,190);//slightly darker than buff
@@ -26,69 +36,65 @@ public class Apply_Linearization implements PlugInFilter, DialogListener
 	ImagePlus dataImp;
 	ImageProcessor dataIp;
 	ResultsTable fitRT;
+	GenericDialog gd;
+	GenericDialogAddin gda = new GenericDialogAddin();
+	ChoiceField sinoCF,resultTableCF, fitCF;
 		
-	@Override
-	public int setup(String arg, ImagePlus imp)
-	{
-		this.dataImp = imp;
-		return DOES_32 + DOES_16;
-	}
 
 	@Override
-	public void run(ImageProcessor ip)
-	{
-		this.dataIp = ip;
-	
+	public void run(String arg)
+	{		
+		String[] imageTitles = WindowManager.getImageTitles();
+		String[] nonImageTitles = WindowManager.getNonImageTitles();
 		
-		//import the table values if the Correction results table is present
-		String[] paramChoices;
-		int rowCnt=0,colCnt=0;
-		//fitRT = ResultsTable.getResultsTable("Fit Params");
-		fitRT = ResultsTable.getActiveTable();
-		if(fitRT!=null)
+		//Filter nonImageTitles by looking at headings
+		ArrayList<String> titleList = new ArrayList<>();
+		for(String title :nonImageTitles)
 		{
-			if(fitRT.getTitle().contains("Fit Params"))
+			ResultsTable rt = ResultsTable.getResultsTable(title);
+			if(rt!=null)
 			{
-				colCnt = fitRT.getLastColumn();
-				rowCnt = fitRT.getCounter();
-				coeffs = new double[colCnt][rowCnt];
-				int row,col=0;
-				for(row=0;row<rowCnt;row++)
+				if(rt.getTitle().contains("Fit Parameters"))
+				//if(rt.columnExists("Fit"))
 				{
-					for(col=0;col<colCnt;col++)
-					{
-						coeffs[col][row] = fitRT.getValueAsDouble(col+1, row);
-					}
+					titleList.add(title);
 				}
-
-				String[] colHdr = fitRT.getHeadings();			
-				paramChoices = fitRT.getColumnAsStrings(colHdr[0]);
-			}
-			else
-			{
-				paramChoices = new String[1];
-				paramChoices[0] = "Fit Params Table Absent";			
 			}
 		}		
-		else
+		String[] resultTableTitles = titleList.toArray(new String[titleList.size()]);		
+		
+		//Remove RGB images from the images list
+		titleList.clear();
+		for(String title : imageTitles)
 		{
-			paramChoices = new String[1];
-			paramChoices[0] = "Fit Params Table Absent";			
+			if(WindowManager.getImage(title).getBitDepth() != 24)
+			{
+				titleList.add(title);
+			}
+		}
+		imageTitles = titleList.toArray(new String[titleList.size()]);
+
+		if(resultTableTitles.length==0|| imageTitles.length ==0)
+		{
+			IJ.error("This plugin requires at least one image\n "
+					+ "and one \"Fit Parameters\" window.");
+			return;
 		}
 		
+		handleResultTableChoice(resultTableTitles[0]);
+
+		gda=new GenericDialogAddin();
+		gd = new GenericDialog("Apply Sinogram Linearization");
 		
-		//Set up the Dialog			
-		GenericDialog gd = new GenericDialog("Apply Sinogram Linearization");		
+		gd.addChoice("Sinogram Choice", imageTitles, imageTitles[0]);
+		sinoCF = gda.getChoiceField(gd, null, "sinoChoice");
+		gd.addChoice("Results Choice", resultTableTitles, resultTableTitles[0]);
+		resultTableCF = gda.getChoiceField(gd, null, "resultsTable");
+		
 		gd.setInsets(10,0,0);
-		if(fitRT==null)
-		{
-			gd.addChoice("Parameters", paramChoices, paramChoices[0]);			
-		}
-		else
-		{
-			gd.addChoice("Parameters", paramChoices, paramChoices[rowCnt-1]);			
-		}
-				
+		gd.addChoice("Fit Choice", paramChoices, paramChoices[fitRT.getCounter()-1]);
+		fitCF = gda.getChoiceField(gd, null, "fit");
+						
 		gd.addDialogListener(this);
 		gd.addMessage("Select Fit or enter the beam hardening\n"
 				+ "polynomial coefficients.",myFont,Color.BLACK);
@@ -118,6 +124,7 @@ public class Apply_Linearization implements PlugInFilter, DialogListener
 		{
 			return;
 		}
+		
 		else //Apply the polynomial correction to the sinogram
 		{
 			double A = gd.getNextNumber();
@@ -127,15 +134,16 @@ public class Apply_Linearization implements PlugInFilter, DialogListener
 			double E = gd.getNextNumber();
 			double F = gd.getNextNumber();
 			double G = gd.getNextNumber();
-
+			
+			sinoData = getSinoData(sinoCF.getChoice().getSelectedItem());
+					
 			double myDbl;
-			switch(dataImp.getBitDepth())
+			if(sinoData instanceof float[])
 			{
-			case 32:
-				float[] sinoData = (float[]) dataImp.getProcessor().getPixels();
-				for(int i=0;i<sinoData.length;i++)
+				float[] fData = (float[]) sinoData;
+				for(int i=0;i<fData.length;i++)
 				{
-					myDbl = sinoData[i];
+					myDbl = fData[i];
 					myDbl = A + 
 							B*myDbl + 
 							C*Math.pow(myDbl,2) + 
@@ -143,14 +151,15 @@ public class Apply_Linearization implements PlugInFilter, DialogListener
 							E*Math.pow(myDbl,4) +
 							F*Math.pow(myDbl,5) +
 							G*Math.pow(myDbl,6);					
-					sinoData[i] = (float)myDbl;;
-				}
-				break;
-			case 16:
-				short[] iSinoData = (short[]) dataImp.getProcessor().getPixels();
+					fData[i] = (float)myDbl;;
+				}				
+			}
+			else if (sinoData instanceof int[])
+			{
+				int[] iSinoData = (int[]) sinoData;
 				for(int i=0;i<iSinoData.length;i++)
 				{
-					myDbl = (double)iSinoData[i]/6000;
+					myDbl = (double)iSinoData[i];
 					myDbl = A +
 							B*myDbl +
 							C*Math.pow(myDbl,2) + 
@@ -158,45 +167,112 @@ public class Apply_Linearization implements PlugInFilter, DialogListener
 							E*Math.pow(myDbl,4) +
 							F*Math.pow(myDbl,5) +
 							G*Math.pow(myDbl,6);
-					iSinoData[i] = (short)(myDbl*6000);				
-				}				
+					iSinoData[i] = (int)(myDbl);				
+				}								
+			}
+			else if (sinoData instanceof short[])
+			{
+				short[] iSinoData = (short[]) sinoData;
+				for(int i=0;i<iSinoData.length;i++)
+				{
+					myDbl = (double)iSinoData[i];
+					myDbl = A +
+							B*myDbl +
+							C*Math.pow(myDbl,2) + 
+							D*Math.pow(myDbl,3) +
+							E*Math.pow(myDbl,4) +
+							F*Math.pow(myDbl,5) +
+							G*Math.pow(myDbl,6);
+					iSinoData[i] = (short)(myDbl);				
+				}								
+			}
+			else if (sinoData instanceof byte[])
+			{
+				byte[] iSinoData = (byte[]) sinoData;
+				for(int i=0;i<iSinoData.length;i++)
+				{
+					myDbl = (double)iSinoData[i];
+					myDbl = A +
+							B*myDbl +
+							C*Math.pow(myDbl,2) + 
+							D*Math.pow(myDbl,3) +
+							E*Math.pow(myDbl,4) +
+							F*Math.pow(myDbl,5) +
+							G*Math.pow(myDbl,6);
+					iSinoData[i] = (byte)(myDbl);				
+				}								
 			}
 		}
 	}
 	
 	//*******************************************************************************************************
 
-	@SuppressWarnings("unchecked")
 	@Override
 	public boolean dialogItemChanged(GenericDialog gd, AWTEvent e)
 	{
 		if(e!=null)
 		{
-			if(e.getSource() instanceof Choice)
+			Object src = e.getSource();
+			if(src instanceof Choice)
 			{
-				Choice choiceSrc = (Choice)e.getSource();
-				int theItem = choiceSrc.getSelectedIndex();
-				numTxtFldVector = gd.getNumericFields();
-				//move the selected table row into the numeric fields
-				int col = 0;
-				for(TextField tf:numTxtFldVector)
+				Choice choice = (Choice)src;
+				String name = choice.getName();
+				switch(name)
 				{
-					double val;
-					val = coeffs[col][theItem];
-					String valStr = String.format("%" + numFldDigits + "." + (numFldDigits-1) +"f", val);
-					tf.setText(valStr);		
-					col++;
+				case "fit":
+					handleFitChoice(fitCF.getChoice().getSelectedIndex());
+					break;
+				case "resultsTable":
+					handleResultTableChoice(resultTableCF.getChoice().getSelectedItem());
+					handleFitChoice(fitCF.getChoice().getSelectedIndex());
+					break;
 				}
 			}
 		}
-		double A = gd.getNextNumber();
-		double B = gd.getNextNumber();
-		double C = gd.getNextNumber();
-		double D = gd.getNextNumber();
-		double E = gd.getNextNumber();
-		double F = gd.getNextNumber();
-		double G = gd.getNextNumber();
-
 		return true;
-	}	
+	}
+	
+	@SuppressWarnings("unchecked")
+	private void handleFitChoice(int colIndex)
+	{
+		numTxtFldVector = gd.getNumericFields();
+		int col=0;
+		for(TextField tf:numTxtFldVector)
+		{
+			tf.setText(Double.toString(coeffs[col][colIndex]));
+			col++;
+		}		
+	}
+	
+	private void handleResultTableChoice(String resultTableTitle)
+	{
+		//import the table values if the Correction results table is present
+		int rowCnt=0,colCnt=0;
+
+		//fitRT = ResultsTable.getResultsTable("Fit Params");
+		fitRT = ResultsTable.getResultsTable(resultTableTitle);
+		if(fitRT!=null)
+		{
+			colCnt = fitRT.getLastColumn();
+			rowCnt = fitRT.getCounter();
+			coeffs = new double[colCnt][rowCnt];
+			int row,col=0;
+			for(row=0;row<rowCnt;row++)
+			{
+				for(col=0;col<colCnt;col++)
+				{
+					coeffs[col][row] = fitRT.getValueAsDouble(col+1, row);
+				}
+			}
+			String[] colHdr = fitRT.getHeadings();			
+			paramChoices = fitRT.getColumnAsStrings(colHdr[0]);
+		}
+	}
+	
+	private Object getSinoData(String imageTitle)
+	{
+		return  WindowManager.getImage(imageTitle).getProcessor().getPixels();
+	}
+
+
 }

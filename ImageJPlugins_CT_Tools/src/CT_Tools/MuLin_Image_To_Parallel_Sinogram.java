@@ -29,6 +29,8 @@ public class MuLin_Image_To_Parallel_Sinogram implements PlugInFilter, DialogLis
 	final String myDialogTitle = "Parallel Beam CTscan";
 	final String[] padOptions = {"None","Circumscribed", "Next Power of 2"};
 	final Color myColor = new Color(240,230,190);//slightly darker than buff
+	final Color errColor = new Color(255,100,0);
+	final Color white = new Color(255,255,255);
 	final Font myFont = new Font(Font.DIALOG, Font.BOLD, 12);
 
 	//The class that does the projection
@@ -78,17 +80,25 @@ public class MuLin_Image_To_Parallel_Sinogram implements PlugInFilter, DialogLis
 				switch(name)
 				{
 				case "detPixCnt":
-					detPixCnt = (int) detPixCntNF.getNumber();
-					if(detPixCnt > originalWidth)
-					{
-						int numAngles = (int) (Math.ceil(Math.PI*detPixCnt/2));
-						//make numAngles even
-						if ((numAngles ^ 1) == numAngles - 1)	numAngles++;	
-						numAnglesNF.setNumber(numAngles);
-					}
-					else dialogOK=false;
+					dialogOK = handleDetPixCntEvent();
 					break;
+				case "numAngles":
+					int numAngles =(int)numAnglesNF.getNumber();
+					if(Double.isNaN(numAngles) || numAngles <1) dialogOK=false;						
+					break;
+				default:
+					//all of the others are numeric
+					String numStr = tf.getText();
+					if(!isNumeric(numStr)) dialogOK=false;
+					else
+					{
+						double num = Double.valueOf(numStr);
+						if(num<0) dialogOK=false;
+					}
+				break;
 				}				
+				if(!dialogOK) tf.setBackground(errColor);
+				else tf.setBackground(white);
 			}
 			
 			else if(src instanceof Choice)
@@ -99,37 +109,7 @@ public class MuLin_Image_To_Parallel_Sinogram implements PlugInFilter, DialogLis
 				{
 				case "padOptions":
 					String option = choice.getSelectedItem();
-					int numAngles=0;
-					switch(option)
-					{
-					case "None":
-						detPixCnt = originalWidth;
-						detPixCntNF.setNumber(detPixCnt);
-						numAngles = (int) (Math.ceil(Math.PI*detPixCnt/2));
-						break;
-					case "Circumscribed":
-						detPixCnt = (int) (Math.ceil(Math.sqrt(originalWidth*originalWidth + originalHeight*originalHeight)));
-						detPixCntNF.setNumber(detPixCnt);
-						numAngles = (int) (Math.ceil(Math.PI*detPixCnt/2));
-						break;
-					case "Next Power of 2":
-						int size = originalWidth;
-						if(originalHeight>size) size = originalHeight;
-						detPixCnt = 0;
-						for(int i=0;i< 10;i++)
-						{
-							detPixCnt =(int) Math.pow(2, i);
-							if(detPixCnt>size) break;
-						}				
-						detPixCntNF.setNumber(detPixCnt);
-						numAngles = (int) (Math.ceil(Math.PI*detPixCnt));
-						break;
-					case "Custom":
-						break;
-					}
-					//make numAngles even
-					if ((numAngles ^ 1) == numAngles - 1)	numAngles++;	
-					numAnglesNF.setNumber(numAngles);
+					handlePadOptionsEvent(option);
 					break;
 				}
 			}
@@ -137,7 +117,7 @@ public class MuLin_Image_To_Parallel_Sinogram implements PlugInFilter, DialogLis
 		getSelections(gd);
 		return dialogOK;
 	}
-
+	
 	//*******************************************************************************
 
 	private boolean doMyDialog()
@@ -177,6 +157,15 @@ public class MuLin_Image_To_Parallel_Sinogram implements PlugInFilter, DialogLis
 
 		gd.addHelp("https://lazzyizzi.github.io/CTsimulator.html");
 		gd.setBackground(myColor);
+		
+		//the pad option can be awitched after the dialog fields
+		//have been set up;
+		if(originalWidth!= originalHeight)
+		{
+			padOption = padOptions[2];
+			padOptionsCF.getChoice().select(padOption);
+			handlePadOptionsEvent(padOption);
+		}
 		gd.showDialog();
 
 		if (gd.wasCanceled())
@@ -190,10 +179,9 @@ public class MuLin_Image_To_Parallel_Sinogram implements PlugInFilter, DialogLis
 		}
 
 	}
-
-
+	
 	//*******************************************************************************
-
+	
 	private void DoRoutine()
 	{
 		float[] sinogram;
@@ -291,6 +279,60 @@ public class MuLin_Image_To_Parallel_Sinogram implements PlugInFilter, DialogLis
 
 	//*******************************************************************************
 
+	private boolean handleDetPixCntEvent()
+	{
+		boolean dialogOK = true;
+		detPixCnt = (int) detPixCntNF.getNumber();
+		if(detPixCnt > originalWidth)
+		{
+			int numAngles = (int) (Math.ceil(Math.PI*detPixCnt/2));
+			//make numAngles even
+			if ((numAngles ^ 1) == numAngles - 1)	numAngles++;	
+			numAnglesNF.setNumber(numAngles);
+		}
+		else dialogOK=false;
+		return dialogOK;
+		
+	}
+
+	//*******************************************************************************
+
+	private void handlePadOptionsEvent(String padOption)
+	{
+		int numAngles=0;
+		switch(padOption)
+		{
+		case "None":
+			detPixCnt = originalWidth;
+			detPixCntNF.setNumber(detPixCnt);
+			numAngles = (int) (Math.ceil(Math.PI*detPixCnt/2));
+			break;
+		case "Circumscribed":
+			detPixCnt = (int) (Math.ceil(Math.sqrt(originalWidth*originalWidth + originalHeight*originalHeight)));
+			detPixCntNF.setNumber(detPixCnt);
+			numAngles = (int) (Math.ceil(Math.PI*detPixCnt/2));
+			break;
+		case "Next Power of 2":
+			int size = originalWidth;
+			if(originalHeight>size) size = originalHeight;
+			detPixCnt = 0;
+			for(int i=0;i< 10;i++)
+			{
+				detPixCnt =(int) Math.pow(2, i);
+				if(detPixCnt>size) break;
+			}				
+			detPixCntNF.setNumber(detPixCnt);
+			numAngles = (int) (Math.ceil(Math.PI*detPixCnt/2));
+			break;
+		case "Custom":
+			break;
+		}
+		if ((numAngles ^ 1) == numAngles - 1)	numAngles++;	
+		numAnglesNF.setNumber(numAngles);
+	}
+
+	//*******************************************************************************
+
 	@Override
 	public void run(ImageProcessor ip)
 	{
@@ -300,13 +342,8 @@ public class MuLin_Image_To_Parallel_Sinogram implements PlugInFilter, DialogLis
 			return;
 		}
 		
-		//the original image width and height
 		originalWidth =ip.getWidth();
 		originalHeight =ip.getHeight();
-		if(originalHeight != originalWidth)
-		{
-			IJ.showMessage("Image must be Square. Select a padding option in the Dialog.");
-		}
 		
 		Calibration cal = imageImp.getCalibration();
 		unit = cal.getUnit().toUpperCase();
@@ -353,12 +390,25 @@ public class MuLin_Image_To_Parallel_Sinogram implements PlugInFilter, DialogLis
 			return false;
 		}
 
-		if(numAng<1)
-		{
-			IJ.error("Image To Sinogram Error", "Images must have one or more angles");
-			return false;
-		}
+//		if(numAng<1)
+//		{
+//			IJ.error("Image To Sinogram Error", "Images must have one or more angles");
+//			return false;
+//		}
 		
 		return true;
-	}	
+	}
+	public static boolean isNumeric(String str)
+	{ 
+		try
+		{  
+			Double.parseDouble(str);  
+			return true;
+		}
+		catch(NumberFormatException e)
+		{  
+			return false;  
+		}  
+	}
+
 }

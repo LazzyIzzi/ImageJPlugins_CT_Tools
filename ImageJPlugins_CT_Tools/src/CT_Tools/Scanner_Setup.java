@@ -98,6 +98,8 @@ public class Scanner_Setup implements PlugIn, DialogListener, ActionListener
 	final Color buff = new Color(250,240,200);
 	
 	final Color myColor = new Color(240,230,190);//slightly darker than buff
+	final Color errColor = new Color(255,100,0);
+	final Color white = new Color(255,255,255);
 	Font myFont = new Font(Font.DIALOG, Font.BOLD, 12);
 
 	boolean isMacro=false;
@@ -159,7 +161,7 @@ public class Scanner_Setup implements PlugIn, DialogListener, ActionListener
 	
 	public boolean dialogItemChanged(GenericDialog gd, AWTEvent e)
 	{
-	
+		boolean dialogOK = true;
 		if(e!=null)
 		{			
 			Object src = e.getSource();
@@ -187,6 +189,7 @@ public class Scanner_Setup implements PlugIn, DialogListener, ActionListener
 				String name = tf.getName();
 				String filterStr = tf.getText();
 				TagSet filteredTagData;
+				String numStr;
 				switch(name)
 				{
 				case "sampleFilter":
@@ -212,10 +215,7 @@ public class Scanner_Setup implements PlugIn, DialogListener, ActionListener
 					{
 						sampleCF.getChoice().select(0);
 						sampFormulaSF.getTextField().setText(filteredMatlFormula[0]);
-//						if(useTabDensity)
-//						{
-							sampGmPerCCNF.setNumber(filteredMatlGmPerCC[0]);
-//						}
+						sampGmPerCCNF.setNumber(filteredMatlGmPerCC[0]);
 					}
 					break;
 				case "detectorFilter":
@@ -241,25 +241,47 @@ public class Scanner_Setup implements PlugIn, DialogListener, ActionListener
 					{
 						detectorCF.getChoice().select(0);
 						detFormulaSF.getTextField().setText(filteredMatlFormula[0]);
-//						if(useTabDensity)
-//						{
-							detGmPerCCNF.setNumber(filteredMatlGmPerCC[0]);
-//						}
+						detGmPerCCNF.setNumber(filteredMatlGmPerCC[0]);
+					}
+					break;
+				case "detectorFormula":
+				case "sampleFormula":
+					if(mmc.getMevArray(tf.getText())==null) dialogOK = false;
+					break;
+				case "filterThickness":
+					numStr = tf.getText();
+					if(!isNumeric(numStr)) dialogOK=false;
+					else
+					{
+						double num = Double.valueOf(numStr);
+						if(num<0) dialogOK=false;
+					}
+					break;
+				default:
+					//all of the others are numeric
+					numStr = tf.getText();
+					if(!isNumeric(numStr)) dialogOK=false;
+					else
+					{
+						double num = Double.valueOf(numStr);
+						if(num<=0) dialogOK=false;
 					}
 					break;
 				}
+				updateBtnBF.getButton().setEnabled(dialogOK);
+				if(dialogOK==false) tf.setBackground(errColor);										
+				else tf.setBackground(white);
 			}
 		}
 
-		boolean dialogOK = getSelections();
-		updateBtnBF.getButton().setEnabled(dialogOK);
+		getSelections();
 		return dialogOK;		
 	}
 	
 	//***************************************************************************************
 	ChoiceField sampleCF,detectorCF;
 	StringField sampFiltSF,detFiltSF,sampFormulaSF,detFormulaSF;
-	NumericField sampGmPerCCNF,detGmPerCCNF;
+	NumericField KVNF,maNF,filterThickNF,sampGmPerCCNF,detGmPerCCNF,detThicknessNF;
 	ButtonField updateBtnBF;
 	
 	public void doDialog()
@@ -275,13 +297,16 @@ public class Scanner_Setup implements PlugIn, DialogListener, ActionListener
 		gd.addMessage("X-ray Source________________",myFont,Color.BLACK);
 		gd.addChoice("Target",elementSymb,bhSet.target);
 		gd.addNumericField("KV", bhSet.kv);
+		KVNF = gda.getNumericField(gd, null, "KV");
 		gd.addNumericField("mA", bhSet.ma);
+		maNF = gda.getNumericField(gd, null, "ma");
 
 		//Filter
 		gd.setInsets(10,0,0);
 		gd.addMessage("Source Filter________________",myFont,Color.BLACK);
 		gd.addChoice("Filter_Material",elementSymb,bhSet.filter);
 		gd.addNumericField("Filter_Thickness(cm)", bhSet.filterCM);
+		filterThickNF = gda.getNumericField(gd, null, "filterThickness");
 
 		//Sample
 		gd.setInsets(10,0,0);
@@ -309,6 +334,7 @@ public class Scanner_Setup implements PlugIn, DialogListener, ActionListener
 		gd.addStringField("Detector_Formula", bhSet.detFormula);
 		detFormulaSF = gda.getStringField(gd, null, "detectorFormula");
 		gd.addNumericField("Detector_Thickness(cm)", bhSet.detCM);
+		
 		gd.addNumericField("Detector_Density(gm/cc)", bhSet.detGmPerCC);
 		detGmPerCCNF = gda.getNumericField(gd, null, "detGmPerCC");
 		
@@ -402,52 +428,29 @@ public class Scanner_Setup implements PlugIn, DialogListener, ActionListener
 			
 	//***************************************************************************************
 
-	private boolean getSelections()
+	private void getSelections()
 	{
 		boolean dialogOK=true;
 		
 		gd.resetCounters();
 		bhSet.target = gd.getNextChoice();
-		bhSet.filter = gd.getNextChoice();
-		
+		bhSet.filter = gd.getNextChoice();		
 		bhSet.filterGmPerCC = mmc.getAtomGmPerCC(bhSet.filter);
-		if(bhSet.filterGmPerCC == Double.NaN) dialogOK=false;
-		
 		bhSet.kv = gd.getNextNumber();
-		if(bhSet.kv == Double.NaN) dialogOK=false;
-		
 		bhSet.ma = gd.getNextNumber();
-		if(Double.isNaN(bhSet.ma)) dialogOK=false;
-		
 		bhSet.filterCM = gd.getNextNumber();
-		if(Double.isNaN(bhSet.filterCM)) dialogOK=false;
-		
 		bhSet.matlCM = gd.getNextNumber();
-		if(Double.isNaN( bhSet.matlCM)) dialogOK=false;
-		
 		bhSet.matlGmPerCC = gd.getNextNumber();
-		if(Double.isNaN( bhSet.matlGmPerCC)) dialogOK=false;
-		
 		bhSet.detCM = gd.getNextNumber();
-		if(Double.isNaN(bhSet.detCM)) dialogOK=false;
-		
 		bhSet.detGmPerCC = gd.getNextNumber();
-		if(Double.isNaN(bhSet.detGmPerCC)) dialogOK=false;
-		
 		bhSet.kvMin = gd.getNextNumber();		
-		if(Double.isNaN(bhSet.kvMin)) dialogOK=false;
-		
 		bhSet.kvInc = gd.getNextNumber();
-		if(Double.isNaN(bhSet.kvInc)) dialogOK=false;
-		
 		@SuppressWarnings("unused")
 		String dumStr = gd.getNextString();
 		bhSet.matlFormula = gd.getNextString();
 		dumStr = gd.getNextString();
 		bhSet.detFormula = gd.getNextString();
-		bhSet.plotChoice = gd.getNextRadioButton();	
-		
-		return dialogOK;
+		bhSet.plotChoice = gd.getNextRadioButton();			
 	}
 
 	//***************************************************************************************
@@ -873,4 +876,19 @@ public class Scanner_Setup implements PlugIn, DialogListener, ActionListener
 		}
 		else plotWin.drawPlot(plot);		
 	}	
+	
+	
+	public static boolean isNumeric(String str)
+	{ 
+		try
+		{  
+			Double.parseDouble(str);  
+			return true;
+		}
+		catch(NumberFormatException e)
+		{  
+			return false;  
+		}  
+	}
+
 }
