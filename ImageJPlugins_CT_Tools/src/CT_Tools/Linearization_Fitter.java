@@ -30,7 +30,8 @@ import jhd.TagTools.*;
 */
 
 /* Macro example for viewing plot vs energy
- * for(keV=100;keV<251;keV+=5)
+ *
+for(keV=100;keV<251;keV+=5)
 {
 	run("Linearization Fitter", "ct=Al_CastingWithIronAndBrassPinsTagImage_ParBremSino-1_Recon-1 tag=Al_CastingWithIronAndBrassPinsTagImage.tif est.="+keV);
 	kStr = d2s(keV,1);
@@ -221,17 +222,25 @@ public class Linearization_Fitter implements PlugIn , DialogListener ,ActionList
 		PlotWindow plotWin = (PlotWindow)WindowManager.getWindow("BeamHardening Plot");
 		if(plotWin==null)
 		{
-			tauPlot = new Plot("BeamHardening Plot", "Data Proj","Model Proj");		
+			tauPlot = new Plot("BeamHardening Plot", "Data Attn.","Model Attn.");		
 		   	tauPlot.setBackgroundColor(buff);
+		   	tauPlot.setFontSize(14);
 			tauPlot.addPoints(dataProj, modelProj, Plot.DOT);
 			tauPlot.show();
 			plotWin = (PlotWindow)WindowManager.getWindow("BeamHardening Plot");
 		}
 		tauPlot = plotWin.getPlot();
 		tauPlot.setColor(Color.RED);
-		
+		tauPlot.setLineWidth(1.5f);		
 		tauPlot.replace(0, "dot", dataProj, modelProj);
 		tauPlot.setLimitsToFit(true);
+		
+		String str  =  "Data: " + dataImageName;
+		str = str + "\nModel: " + modelImageName;
+		str = str + "\nkeV: " + keV;
+		tauPlot.setFont(Font.BOLD, 14f);
+		tauPlot.setColor(Color.BLACK);
+		tauPlot.addLabel(0.02, 0.1, str);		
 		tauPlot.update();
 		
 		//Output the fit results table

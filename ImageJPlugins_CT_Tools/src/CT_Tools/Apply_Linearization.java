@@ -1,12 +1,7 @@
 package CT_Tools;
 
-import java.awt.AWTEvent;
-import java.awt.Choice;
-import java.awt.Color;
-import java.awt.Font;
-import java.awt.TextField;
+import java.awt.*;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Vector;
 
 import ij.IJ;
@@ -28,6 +23,8 @@ public class Apply_Linearization implements PlugIn, DialogListener
 	String[] paramChoices;
 	double[][] coeffs;
 	Object sinoData;
+	boolean useScaleFactor;
+	double scaleFactor = 6000;
 	
 	Vector<TextField> numTxtFldVector;
 	Font myFont = new Font(Font.DIALOG, Font.BOLD, 12);
@@ -39,7 +36,8 @@ public class Apply_Linearization implements PlugIn, DialogListener
 	GenericDialog gd;
 	GenericDialogAddin gda = new GenericDialogAddin();
 	ChoiceField sinoCF,resultTableCF, fitCF;
-		
+	CheckboxField createNewCBF,useScaleFactorCBF;
+	NumericField scaleFactorNF;
 
 	@Override
 	public void run(String arg)
@@ -82,6 +80,8 @@ public class Apply_Linearization implements PlugIn, DialogListener
 		}
 		
 		handleResultTableChoice(resultTableTitles[0]);
+		if(WindowManager.getImage(imageTitles[0]).getBitDepth() == 32) useScaleFactor = false;
+		else useScaleFactor = true;
 
 		gda=new GenericDialogAddin();
 		gd = new GenericDialog("Apply Sinogram Linearization");
@@ -113,6 +113,12 @@ public class Apply_Linearization implements PlugIn, DialogListener
 		gd.addNumericField("A4 or E", 0,numFldDigits,numFldCols,null);
 		gd.addNumericField("A5 or F", 0,numFldDigits,numFldCols,null);
 		gd.addNumericField("A6 or G", 0,numFldDigits,numFldCols,null);
+		gd.addCheckbox("Use_Scale Factor", useScaleFactor);
+		useScaleFactorCBF = gda.getCheckboxField(gd, "useScaleFactor");
+		gd.addNumericField("Scale_Factor", scaleFactor);
+		scaleFactorNF = gda.getNumericField(gd, null, "scaleFactor");
+		gd.addCheckbox("Create new Image", true);
+		createNewCBF = gda.getCheckboxField(gd, "createNew");
 		gd.addMessage("Click OK to apply them\n"
 				+ "to your sinogram",myFont,Color.BLACK);
 		gd.addHelp("https://lazzyizzi.github.io/Linearization.html");
@@ -134,8 +140,31 @@ public class Apply_Linearization implements PlugIn, DialogListener
 			double E = gd.getNextNumber();
 			double F = gd.getNextNumber();
 			double G = gd.getNextNumber();
+			useScaleFactor = gd.getNextBoolean();
+			if(useScaleFactor) scaleFactor = gd.getNextNumber();
+			else scaleFactor = 1;
+			boolean createNew = gd.getNextBoolean();
 			
-			sinoData = getSinoData(sinoCF.getChoice().getSelectedItem());
+			if(createNew)
+			{
+				
+				ImagePlus dataImage =  WindowManager.getImage(sinoCF.getChoice().getSelectedItem());
+				String copyTitle = dataImage.getTitle();
+				
+				Choice fitChoice = fitCF.getChoice();
+				int itemCount = fitChoice.getItemCount();
+				int itemIndex = fitChoice.getSelectedIndex();
+				int fitOrder =itemCount - itemIndex;				
+				copyTitle += ("_Ord"+fitOrder);				
+				ImagePlus copyImage = dataImage.duplicate();
+				copyImage.setTitle(copyTitle);
+				copyImage.show();
+				sinoData = copyImage.getProcessor().getPixels();
+			}
+			else
+			{
+				sinoData = getSinoData(sinoCF.getChoice().getSelectedItem());
+			}
 					
 			double myDbl;
 			if(sinoData instanceof float[])
@@ -143,7 +172,7 @@ public class Apply_Linearization implements PlugIn, DialogListener
 				float[] fData = (float[]) sinoData;
 				for(int i=0;i<fData.length;i++)
 				{
-					myDbl = fData[i];
+					myDbl = fData[i]/scaleFactor;
 					myDbl = A + 
 							B*myDbl + 
 							C*Math.pow(myDbl,2) + 
@@ -151,7 +180,7 @@ public class Apply_Linearization implements PlugIn, DialogListener
 							E*Math.pow(myDbl,4) +
 							F*Math.pow(myDbl,5) +
 							G*Math.pow(myDbl,6);					
-					fData[i] = (float)myDbl;;
+					fData[i] = (float)(myDbl*scaleFactor);
 				}				
 			}
 			else if (sinoData instanceof int[])
@@ -159,7 +188,7 @@ public class Apply_Linearization implements PlugIn, DialogListener
 				int[] iSinoData = (int[]) sinoData;
 				for(int i=0;i<iSinoData.length;i++)
 				{
-					myDbl = (double)iSinoData[i];
+					myDbl = (double)iSinoData[i]/scaleFactor;
 					myDbl = A +
 							B*myDbl +
 							C*Math.pow(myDbl,2) + 
@@ -167,7 +196,7 @@ public class Apply_Linearization implements PlugIn, DialogListener
 							E*Math.pow(myDbl,4) +
 							F*Math.pow(myDbl,5) +
 							G*Math.pow(myDbl,6);
-					iSinoData[i] = (int)(myDbl);				
+					iSinoData[i] = (int)(myDbl*scaleFactor);				
 				}								
 			}
 			else if (sinoData instanceof short[])
@@ -175,7 +204,7 @@ public class Apply_Linearization implements PlugIn, DialogListener
 				short[] iSinoData = (short[]) sinoData;
 				for(int i=0;i<iSinoData.length;i++)
 				{
-					myDbl = (double)iSinoData[i];
+					myDbl = (double)iSinoData[i]/6000;
 					myDbl = A +
 							B*myDbl +
 							C*Math.pow(myDbl,2) + 
@@ -183,7 +212,7 @@ public class Apply_Linearization implements PlugIn, DialogListener
 							E*Math.pow(myDbl,4) +
 							F*Math.pow(myDbl,5) +
 							G*Math.pow(myDbl,6);
-					iSinoData[i] = (short)(myDbl);				
+					iSinoData[i] = (short)(myDbl*scaleFactor);				
 				}								
 			}
 			else if (sinoData instanceof byte[])
@@ -191,7 +220,7 @@ public class Apply_Linearization implements PlugIn, DialogListener
 				byte[] iSinoData = (byte[]) sinoData;
 				for(int i=0;i<iSinoData.length;i++)
 				{
-					myDbl = (double)iSinoData[i];
+					myDbl = (double)iSinoData[i]/6000;
 					myDbl = A +
 							B*myDbl +
 							C*Math.pow(myDbl,2) + 
@@ -199,7 +228,7 @@ public class Apply_Linearization implements PlugIn, DialogListener
 							E*Math.pow(myDbl,4) +
 							F*Math.pow(myDbl,5) +
 							G*Math.pow(myDbl,6);
-					iSinoData[i] = (byte)(myDbl);				
+					iSinoData[i] = (byte)(myDbl*scaleFactor);				
 				}								
 			}
 		}
@@ -210,6 +239,7 @@ public class Apply_Linearization implements PlugIn, DialogListener
 	@Override
 	public boolean dialogItemChanged(GenericDialog gd, AWTEvent e)
 	{
+		boolean dialogOK = true;
 		if(e!=null)
 		{
 			Object src = e.getSource();
@@ -219,6 +249,12 @@ public class Apply_Linearization implements PlugIn, DialogListener
 				String name = choice.getName();
 				switch(name)
 				{
+				case "sinoChoice":
+//					String title = sinoCF.getChoice().getSelectedItem();
+//					if(WindowManager.getImage(title).getBitDepth() == 32) useScaleFactor = false;
+//					else  useScaleFactor = true;
+//					useScaleFactorCBF.getCheckBox().setState(useScaleFactor);
+					break;
 				case "fit":
 					handleFitChoice(fitCF.getChoice().getSelectedIndex());
 					break;
@@ -228,20 +264,41 @@ public class Apply_Linearization implements PlugIn, DialogListener
 					break;
 				}
 			}
+			if(src instanceof Checkbox)
+			{
+				Checkbox cb = (Checkbox)src;
+				String name = cb.getName();
+				switch(name)
+				{
+				case "useScaleFactor":
+					if(useScaleFactorCBF.getCheckBox().getState())
+					{
+						scaleFactor = scaleFactorNF.getNumber();
+						if(Double.isNaN(scaleFactor)) dialogOK = false;
+					}
+					break;
+				}
+			}
 		}
-		return true;
+		return dialogOK;
 	}
 	
 	@SuppressWarnings("unchecked")
 	private void handleFitChoice(int colIndex)
 	{
 		numTxtFldVector = gd.getNumericFields();
-		int col=0;
-		for(TextField tf:numTxtFldVector)
+		TextField[] tfArr = numTxtFldVector.toArray(new TextField[numTxtFldVector.size()]);
+		//tfArr.length-1 so we don't write R^2 in the scaleFactor box 
+		for(int i=0;i<tfArr.length-1;i++)
 		{
-			tf.setText(Double.toString(coeffs[col][colIndex]));
-			col++;
-		}		
+			tfArr[i].setText(Double.toString(coeffs[i][colIndex]));
+		}
+//		int col=0;
+//		for(TextField tf:numTxtFldVector)
+//		{
+//			tf.setText(Double.toString(coeffs[col][colIndex]));
+//			col++;
+//		}		
 	}
 	
 	private void handleResultTableChoice(String resultTableTitle)
