@@ -831,6 +831,8 @@ public class CT_Recon_ParallelBeam implements ActionListener, DialogListener, Im
 
 		gd.setOKLabel("OK(reconstruct all)");
 
+		gd.addHelp("https://lazzyizzi.github.io/CtRecon.html");
+		
 		gd.showDialog();
 
 		if(gd.wasCanceled())
