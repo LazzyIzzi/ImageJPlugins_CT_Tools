@@ -4,12 +4,10 @@ import ij.IJ;
 import ij.ImagePlus;
 import ij.WindowManager;
 import ij.gui.*;
-//import ij.gui.GenericDialog;
-//import ij.gui.Plot;
+
 import ij.plugin.*;
 import ij.process.ImageProcessor;
 import ij.text.TextWindow;
-import ij.measure.Calibration;
 import ij.measure.CurveFitter;
 import ij.measure.ResultsTable;
 
@@ -18,7 +16,7 @@ import java.awt.event.*;
 
 import jhd.ImageJAddins.GenericDialogAddin;
 import jhd.ImageJAddins.GenericDialogAddin.*;
-import jhd.MuMassCalculator.*;
+//import jhd.MuMassCalculator.*;
 import jhd.Projection.*;
 import jhd.TagTools.*;
 
@@ -48,7 +46,6 @@ run("Images to Stack", "name=BeamHardeningPlot title=BeamHardening use");
 
 public class Linearization_Fitter implements PlugIn , DialogListener ,ActionListener
 {
-	MuMassCalculator mmc = new MuMassCalculator();
 	ParallelProjectors prj= new ParallelProjectors();
 	
 	GenericDialog gd;
@@ -73,6 +70,7 @@ public class Linearization_Fitter implements PlugIn , DialogListener ,ActionList
 	double	keV;
 	String dataImageName;
 	String modelImageName;
+	String phiImageName;
 	
 	final int nViews = 18;
 
@@ -93,6 +91,8 @@ public class Linearization_Fitter implements PlugIn , DialogListener ,ActionList
 
 	//*****************************************************************
 	NumericField kevNF;
+	NumericField kevIncNF;
+	ButtonField upBtnBF,downBtnBF;
 	private void DoDialog()
 	{
 		String dir = IJ.getDirectory("plugins");
@@ -118,27 +118,39 @@ public class Linearization_Fitter implements PlugIn , DialogListener ,ActionList
 			}
 			
 			String[] winTitles = WindowManager.getImageTitles();
+			String[] phiTitles = new String[winTitles.length + 1];
+			phiTitles[0]="None";
+			for(i=1;i<phiTitles.length;i++) phiTitles[i]=winTitles[i-1];
+			
 			gda = new GenericDialogAddin();
 			//gd = new GenericDialog("Find Beam Hardening Corrections");
-			gd= GUI.newNonBlockingDialog("Find Beam Hardening Corrections");
+			gd= GUI.newNonBlockingDialog("Linearization Fitter with Porosity");
 			gd.addDialogListener(this);
 			//Materials
 			//gd.setInsets(10,0,0);
 			gd.addMessage("The CT Slice and Tag Image must be the same size\n"
-					+ "with isotropic pixel units in cm.\n"
-					+ "The CT Slice values must be linear attenuation (cm-1).",myFont,Color.BLACK);
+					+ "with isotropic pixel size units in cm.\n"
+					+ "The CT Slice value units must be linear attenuation (cm-1).\n"
+					+ "Porosity image values must be between 0(solid) and 1(open pore).\n"
+					+ "Click the\"+\" or \"-\" buttons to change energy for the best fit.\n"
+					+ "At any time you can use the plot window's \"Data->Add Fit\"\n"
+					+ "to view available fit curves.\n",myFont,Color.BLACK);
+			
 			gd.addChoice("CT Slice:", winTitles, winTitles[0]);
 			gd.addChoice("Tag Image:", winTitles, winTitles[0]);
-					
+			gd.addChoice("Porosity Image:", phiTitles, phiTitles[0]);
+								
 			gd.addNumericField("Est. keV", 100);
 			kevNF = gda.getNumericField(gd, null, "estKeV");
-			gd.setInsets(0, 75, 0);
-			gd.addButton("Update",this);
-			gd.addMessage("Click OK\n"
-					+ "In the plot window, use \"Data->Add Fit\"\n"
-					+ "to select the best fit.\n"
-					+ "Use Apply Linearization plugin to apply\n"
-					+ "the correction to the CT slice's original sinogram",myFont,Color.BLACK);
+			SpinnerPanel sp = gda.new SpinnerPanel();
+			TextField tf = (TextField)gd.getNumericFields().get(0);
+			gd.addToSameRow();
+			gd.addPanel(sp.addSpinner(tf,"estKev", 5.0));
+					
+			gd.addMessage("After clicking OK\n"
+					+ "Do not close the \"Fit Parameters\" Window.\n"
+					+ "Use the Apply Linearization plugin to select\n"
+					+ "a \"Fit Parameters\" fit to apply to the CT slice's original sinogram",myFont,Color.BLACK);
 			gd.addHelp("https://lazzyizzi.github.io/Linearization.html");
 			gd.setBackground(myColor);
 			gd.showDialog();
@@ -167,21 +179,57 @@ public class Linearization_Fitter implements PlugIn , DialogListener ,ActionList
 	private void getSelections()
 	{
 		gd.resetCounters();
-		dataImageName = gd.getNextChoice();
-		modelImageName   = gd.getNextChoice();
-		keV=gd.getNextNumber();
+		try
+		{
+			dataImageName = gd.getNextChoice();
+			modelImageName   = gd.getNextChoice();
+			phiImageName   = gd.getNextChoice();	
+			keV=gd.getNextNumber();
+		}
+		catch (Exception e)
+		{
+			if(e instanceof NullPointerException)
+			{
+				IJ.showMessage("Error", "To record, the Macro Recorder must be open before\nlaunching the Linearization Fitter Plugin");
+			}
+			else
+			{
+				IJ.showMessage(e.getMessage());
+				//e.printStackTrace();
+			}
+		}
 	}
 
 	private void fitAttenuations()
 	{
-		//Get the CTslice  and model data
+		ImagePlus phiImp;
+
 		getSelections();
+		
+		
+		//Get the CTslice  and model data
 		dataImp = WindowManager.getImage(dataImageName);
 		modelImp = WindowManager.getImage(modelImageName);
-
-		if(!(dataImp.getWidth()== dataImp.getHeight() && modelImp.getWidth() ==  modelImp.getHeight() && dataImp.getWidth()== modelImp.getHeight()))
+		
+		//create a default porosity image filled with zeros
+		if(phiImageName.equals("None"))
 		{
-			IJ.error("Tag and reconstructed images must be square and of equal size.");			
+			phiImp = dataImp.duplicate();
+			phiImp.getProcessor().multiply(0);
+			phiImp.setTitle("porosity");
+		}
+		else
+		{
+			phiImp = WindowManager.getImage(phiImageName);			
+		}
+
+		if(!(	dataImp.getWidth()	== dataImp.getHeight() && 
+				modelImp.getWidth()	==  modelImp.getHeight() && 
+				phiImp.getWidth()	==  phiImp.getHeight() && 
+				dataImp.getWidth()	== modelImp.getHeight() &&
+				dataImp.getWidth()	== phiImp.getHeight()))
+		{
+			IJ.error("Selected images must be square and of equal size.");			
 			return;
 		}
 		
@@ -205,6 +253,10 @@ public class Linearization_Fitter implements PlugIn , DialogListener ,ActionList
 		//Convert tags to muLin
 		float[] tagImg = (float[])tagImp.getProcessor().getPixels();		
 		mlt.tagsToLinearAttn(tagImg, myTagSet, keV);
+		
+		//Multiply the tagImg by the porosity
+		float[] phiImg = (float[])phiImp.getProcessor().getPixels();
+		for(int i=0;i<tagImg.length;i++) tagImg[i] *= 1-phiImg[i];
 		float[] modelSino = parPrj.imageToParallelSinogram(tagImg, width, width, nViews);
 
 		//Sum the sinograms
@@ -330,6 +382,8 @@ public class Linearization_Fitter implements PlugIn , DialogListener ,ActionList
 	public boolean dialogItemChanged(GenericDialog gd, AWTEvent e)
 	{
 		boolean dialogOK = true;
+
+		getSelections();
 		if(e!=null)
 		{
 			Object src = e.getSource();
@@ -339,17 +393,18 @@ public class Linearization_Fitter implements PlugIn , DialogListener ,ActionList
 				String name = tf.getName();
 				switch(name)
 				{
-				case "estKeV":
+				case "estKev":
 					keV = kevNF.getNumber();
 					if(Double.isNaN(keV)) dialogOK=false;
 					else if(keV<1 || keV > 1e9) dialogOK=false;
 					break;
 				}
-				if(dialogOK==false) tf.setBackground(errColor);										
-				else tf.setBackground(white);
+				if(dialogOK==true)										
+				{
+					fitAttenuations();
+				}
 			}
 		}
-		getSelections();
 		return dialogOK;
 	}
 	
@@ -368,9 +423,27 @@ public class Linearization_Fitter implements PlugIn , DialogListener ,ActionList
 	}
 
 	@Override
-	public void actionPerformed(ActionEvent e) {
-		getSelections();
-		fitAttenuations();
+	public void actionPerformed(ActionEvent e)
+	{
+		if(e!=null)
+		{
+			Object src = e.getSource();
+			if(src instanceof Button)
+			{
+				Button theButton = (Button)src;
+				switch(theButton.getName())
+				{
+				case "upBtn":
+					kevNF.setNumber(kevNF.getNumber()+kevIncNF.getNumber());
+					break;
+				case "downBtn":
+					kevNF.setNumber(kevNF.getNumber()-kevIncNF.getNumber());
+					break;
+				}
+			}
+			getSelections();
+			fitAttenuations();
+		}
 		
 	}
 
