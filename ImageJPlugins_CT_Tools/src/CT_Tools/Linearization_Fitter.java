@@ -314,9 +314,12 @@ public class Linearization_Fitter implements PlugIn , DialogListener ,ActionList
 		for(i=0;i< fitParams.length-1;i++)
 		{
 			fitRT.addValue(hdr[i], fitParams[i]);
+			//System.out.print(hdr[i]+"="+fitParams[i] + ", ");
 		}
+		//System.out.println(" ");
 		fitRT.addValue("R^2", crvfit.getRSquared());
-
+		
+	
 		fitRT.incrementCounter();
 		crvfit = new CurveFitter(dataProj,modelProj);
 		crvfit.doFit(CurveFitter.POLY5);
@@ -325,8 +328,11 @@ public class Linearization_Fitter implements PlugIn , DialogListener ,ActionList
 		for(i=0;i< fitParams.length-1;i++)
 		{
 			fitRT.addValue(hdr[i], fitParams[i]);
+			//System.out.print(hdr[i]+"="+fitParams[i] + ", ");
 		}
+		//System.out.println(" ");
 		fitRT.addValue("R^2", crvfit.getRSquared());
+
 
 		fitRT.incrementCounter();
 		crvfit = new CurveFitter(dataProj,modelProj);
@@ -336,8 +342,11 @@ public class Linearization_Fitter implements PlugIn , DialogListener ,ActionList
 		for(i=0;i< fitParams.length-1;i++)
 		{
 			fitRT.addValue(hdr[i], fitParams[i]);
+			//System.out.print(hdr[i]+"="+fitParams[i] + ", ");
 		}
+		//System.out.println(" ");
 		fitRT.addValue("R^2", crvfit.getRSquared());
+
 
 		fitRT.incrementCounter();
 		crvfit = new CurveFitter(dataProj,modelProj);
@@ -347,9 +356,12 @@ public class Linearization_Fitter implements PlugIn , DialogListener ,ActionList
 		for(i=0;i< fitParams.length-1;i++)
 		{
 			fitRT.addValue(hdr[i], fitParams[i]);
+			//System.out.print(hdr[i]+"="+fitParams[i] + ", ");
 		}
+		//System.out.println(" ");
 		fitRT.addValue("R^2", crvfit.getRSquared());
 
+	
 		fitRT.incrementCounter();
 		crvfit = new CurveFitter(dataProj,modelProj);
 		crvfit.doFit(CurveFitter.POLY2);
@@ -358,9 +370,26 @@ public class Linearization_Fitter implements PlugIn , DialogListener ,ActionList
 		for(i=0;i< fitParams.length-1;i++)
 		{
 			fitRT.addValue(hdr[i], fitParams[i]);
+			//System.out.print(hdr[i]+"="+fitParams[i] + ", ");
 		}
+		//System.out.println(" ");
 		fitRT.addValue("R^2", crvfit.getRSquared());
 
+		fitRT.incrementCounter();
+		crvfit = new CurveFitter(dataProj,modelProj);
+		crvfit.doFit(CurveFitter.INV_RODBARD);
+		fitParams = crvfit.getParams();
+		fitRT.addValue("Fit", CurveFitter.fitList[CurveFitter.INV_RODBARD]);
+		for(i=0;i< fitParams.length-1;i++)
+		{
+			fitRT.addValue(hdr[i], fitParams[i]);
+			//System.out.print(hdr[i]+"="+fitParams[i] + ", ");
+		}
+		//System.out.println(" ");
+		fitRT.addValue("R^2", crvfit.getRSquared());
+		
+
+	
 		fitRT.incrementCounter();
 		crvfit = new CurveFitter(dataProj,modelProj);
 		crvfit.doFit(CurveFitter.STRAIGHT_LINE);
@@ -369,9 +398,14 @@ public class Linearization_Fitter implements PlugIn , DialogListener ,ActionList
 		for(i=0;i< fitParams.length-1;i++)
 		{
 			fitRT.addValue(hdr[i], fitParams[i]);
+			//System.out.print(hdr[i]+"="+fitParams[i] + ", ");
 		}
+		//System.out.println(" ");
 		fitRT.addValue("R^2", crvfit.getRSquared());
 		
+
+		//System.out.println(" ");
+
 		fitRT.show("Fit Parameters");
 		TextWindow rtWin = (TextWindow)WindowManager.getWindow("Fit Parameters");
 		int rtHeight = rtWin.getHeight();
