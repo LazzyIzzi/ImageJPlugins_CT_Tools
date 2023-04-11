@@ -2,6 +2,8 @@ package CT_Tools;
 
 import java.awt.*;
 import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.Properties;
 import java.util.Vector;
 
 import ij.IJ;
@@ -145,19 +147,27 @@ public class Apply_Linearization implements PlugIn, DialogListener
 			else scaleFactor = 1;
 			boolean createNew = gd.getNextBoolean();
 			
+			Choice fitChoice = fitCF.getChoice();
 			if(createNew)
-			{
-				
+			{				
 				ImagePlus dataImage =  WindowManager.getImage(sinoCF.getChoice().getSelectedItem());
 				String copyTitle = dataImage.getTitle();
 				
-				Choice fitChoice = fitCF.getChoice();
-				int itemCount = fitChoice.getItemCount();
-				int itemIndex = fitChoice.getSelectedIndex();
-				int fitOrder =itemCount - itemIndex;				
-				copyTitle += ("_Ord"+fitOrder);				
+				copyTitle += fitChoice.getSelectedItem();				
 				ImagePlus copyImage = dataImage.duplicate();
 				copyImage.setTitle(copyTitle);
+				copyImage.setProp("Linearization", fitChoice.getSelectedItem());
+//				ImageJ properties must be < 80 characters to display in ShowInfo
+//				String corrStr = "A="+A+", B="+B+",C="+C+", D="+D+", E="+E+", F="+F+", G="+G;
+//				copyImage.setProp("FitParams", corrStr);
+				copyImage.setProp("LinearizationA", A);				
+				copyImage.setProp("LinearizationB", B);				
+				copyImage.setProp("LinearizationC", C);				
+				copyImage.setProp("LinearizationD", D);				
+				copyImage.setProp("LinearizationE", E);				
+				copyImage.setProp("LinearizationF", F);				
+				copyImage.setProp("LinearizationG", G);				
+
 				copyImage.show();
 				sinoData = copyImage.getProcessor().getPixels();
 			}
@@ -165,75 +175,132 @@ public class Apply_Linearization implements PlugIn, DialogListener
 			{
 				sinoData = getSinoData(sinoCF.getChoice().getSelectedItem());
 			}
-					
+			String fitStr = fitChoice.getSelectedItem();
 			double myDbl;
-			if(sinoData instanceof float[])
+			int i;
+			switch(fitStr)
 			{
-				float[] fData = (float[]) sinoData;
-				for(int i=0;i<fData.length;i++)
+			case "Inverse Rodbard":
+				//Formula: y = c*((x-a)/(d-x))^(1/b)
+				if(sinoData instanceof float[])
 				{
-					myDbl = fData[i]/scaleFactor;
-					myDbl = A + 
-							B*myDbl + 
-							C*Math.pow(myDbl,2) + 
-							D*Math.pow(myDbl,3) +
-							E*Math.pow(myDbl,4) +
-							F*Math.pow(myDbl,5) +
-							G*Math.pow(myDbl,6);					
-					fData[i] = (float)(myDbl*scaleFactor);
-				}				
-			}
-			else if (sinoData instanceof int[])
-			{
-				int[] iSinoData = (int[]) sinoData;
-				for(int i=0;i<iSinoData.length;i++)
+					float[] fData = (float[]) sinoData;
+					for( i=0;i<fData.length;i++)
+					{
+						myDbl = fData[i]/scaleFactor;
+						myDbl = C*Math.pow((myDbl-A)/(D-myDbl),1/B);
+						fData[i] = (float)(myDbl*scaleFactor);
+					}				
+				}
+				else if(sinoData instanceof int[])
 				{
-					myDbl = (double)iSinoData[i]/scaleFactor;
-					myDbl = A +
-							B*myDbl +
-							C*Math.pow(myDbl,2) + 
-							D*Math.pow(myDbl,3) +
-							E*Math.pow(myDbl,4) +
-							F*Math.pow(myDbl,5) +
-							G*Math.pow(myDbl,6);
-					iSinoData[i] = (int)(myDbl*scaleFactor);				
-				}								
-			}
-			else if (sinoData instanceof short[])
-			{
-				short[] iSinoData = (short[]) sinoData;
-				for(int i=0;i<iSinoData.length;i++)
+					int[] fData = (int[]) sinoData;
+					for( i=0;i<fData.length;i++)
+					{
+						myDbl = fData[i]/scaleFactor;
+						myDbl = C*Math.pow((myDbl-A)/(D-myDbl),1/B);
+						if(myDbl<0) myDbl=0;
+						fData[i] = (int)(myDbl*scaleFactor);
+					}				
+				}
+				else if(sinoData instanceof short[])
 				{
-					myDbl = (double)iSinoData[i]/6000;
-					myDbl = A +
-							B*myDbl +
-							C*Math.pow(myDbl,2) + 
-							D*Math.pow(myDbl,3) +
-							E*Math.pow(myDbl,4) +
-							F*Math.pow(myDbl,5) +
-							G*Math.pow(myDbl,6);
-					iSinoData[i] = (short)(myDbl*scaleFactor);				
-				}								
-			}
-			else if (sinoData instanceof byte[])
-			{
-				byte[] iSinoData = (byte[]) sinoData;
-				for(int i=0;i<iSinoData.length;i++)
+					short[] fData = (short[]) sinoData;
+					for( i=0;i<fData.length;i++)
+					{						
+						myDbl = fData[i]/scaleFactor;
+						myDbl = C*Math.pow((myDbl-A)/(D-myDbl),1/B);
+						if(myDbl<0) myDbl=0;
+						fData[i] = (short)(myDbl*scaleFactor);
+					}				
+				}
+				else if(sinoData instanceof byte[])
 				{
-					myDbl = (double)iSinoData[i]/6000;
-					myDbl = A +
-							B*myDbl +
-							C*Math.pow(myDbl,2) + 
-							D*Math.pow(myDbl,3) +
-							E*Math.pow(myDbl,4) +
-							F*Math.pow(myDbl,5) +
-							G*Math.pow(myDbl,6);
-					iSinoData[i] = (byte)(myDbl*scaleFactor);				
-				}								
+					byte[] fData = (byte[]) sinoData;
+					for( i=0;i<fData.length;i++)
+					{
+						myDbl = fData[i]/scaleFactor;
+						myDbl = C*Math.pow((myDbl-A)/(D-myDbl),1/B);
+						if(myDbl<0) myDbl=0;
+						fData[i] = (byte)(myDbl*scaleFactor);
+					}				
+				}
+				break;
+			default:
+				if(sinoData instanceof float[])
+				{
+					float[] fData = (float[]) sinoData;
+					for( i=0;i<fData.length;i++)
+					{
+						myDbl = fData[i]/scaleFactor;
+						myDbl = A + 
+								B*myDbl + 
+								C*Math.pow(myDbl,2) + 
+								D*Math.pow(myDbl,3) +
+								E*Math.pow(myDbl,4) +
+								F*Math.pow(myDbl,5) +
+								G*Math.pow(myDbl,6);					
+						fData[i] = (float)(myDbl*scaleFactor);
+					}				
+				}
+				else if (sinoData instanceof int[])
+				{
+					int[] iSinoData = (int[]) sinoData;
+					for( i=0;i<iSinoData.length;i++)
+					{
+						myDbl = (double)iSinoData[i]/scaleFactor;
+						myDbl = A +
+								B*myDbl +
+								C*Math.pow(myDbl,2) + 
+								D*Math.pow(myDbl,3) +
+								E*Math.pow(myDbl,4) +
+								F*Math.pow(myDbl,5) +
+								G*Math.pow(myDbl,6);
+						if(myDbl<0) myDbl=0;
+						iSinoData[i] = (int)(myDbl*scaleFactor);				
+					}								
+				}
+				else if (sinoData instanceof short[])
+				{
+					short[] iSinoData = (short[]) sinoData;
+					for( i=0;i<iSinoData.length;i++)
+					{
+						myDbl = (double)iSinoData[i]/scaleFactor;
+						myDbl = A +
+								B*myDbl +
+								C*Math.pow(myDbl,2) + 
+								D*Math.pow(myDbl,3) +
+								E*Math.pow(myDbl,4) +
+								F*Math.pow(myDbl,5) +
+								G*Math.pow(myDbl,6);
+						if(myDbl<0) myDbl=0;
+						iSinoData[i] = (short)(myDbl*scaleFactor);				
+					}								
+				}
+				else if (sinoData instanceof byte[])
+				{
+					byte[] iSinoData = (byte[]) sinoData;
+					for( i=0;i<iSinoData.length;i++)
+					{
+						myDbl = (double)iSinoData[i]/scaleFactor;
+						myDbl = A +
+								B*myDbl +
+								C*Math.pow(myDbl,2) + 
+								D*Math.pow(myDbl,3) +
+								E*Math.pow(myDbl,4) +
+								F*Math.pow(myDbl,5) +
+								G*Math.pow(myDbl,6);
+						if(myDbl<0) myDbl=0;
+						iSinoData[i] = (byte)(myDbl*scaleFactor);				
+					}								
+				}
+				break;
 			}
+			
 		}
 	}
 	
+  
 	//*******************************************************************************************************
 
 	@Override
@@ -250,10 +317,10 @@ public class Apply_Linearization implements PlugIn, DialogListener
 				switch(name)
 				{
 				case "sinoChoice":
-//					String title = sinoCF.getChoice().getSelectedItem();
-//					if(WindowManager.getImage(title).getBitDepth() == 32) useScaleFactor = false;
-//					else  useScaleFactor = true;
-//					useScaleFactorCBF.getCheckBox().setState(useScaleFactor);
+					String title = sinoCF.getChoice().getSelectedItem();
+					if(WindowManager.getImage(title).getBitDepth() == 32) useScaleFactor = false;
+					else  useScaleFactor = true;
+					useScaleFactorCBF.getCheckBox().setState(useScaleFactor);
 					break;
 				case "fit":
 					handleFitChoice(fitCF.getChoice().getSelectedIndex());
@@ -293,12 +360,6 @@ public class Apply_Linearization implements PlugIn, DialogListener
 		{
 			tfArr[i].setText(Double.toString(coeffs[i][colIndex]));
 		}
-//		int col=0;
-//		for(TextField tf:numTxtFldVector)
-//		{
-//			tf.setText(Double.toString(coeffs[col][colIndex]));
-//			col++;
-//		}		
 	}
 	
 	private void handleResultTableChoice(String resultTableTitle)
