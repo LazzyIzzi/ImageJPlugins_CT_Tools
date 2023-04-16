@@ -482,7 +482,7 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 		}
 
 		//these properties are preserved in the files tiff header
-		String[] props = new String[28];
+		String[] props = new String[30];
 		props[0]="Geometry"; 
 		props[1]="Fan Beam"; 
 		props[2]="Source";
@@ -511,6 +511,9 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 		props[25]=Double.toString(bfpSet.detCM);
 		props[26]="Detector(gm/cc)";
 		props[27]=Double.toString(bfpSet.detGmPerCC);
+		props[28]="ScaleFactor";
+		if(scale16) props[29]=Double.toString(scaleFactor);
+		else props[29]="Not Scaled";
 		sinoImp.setProperties(props);
 
 		// Set the sinogram X,Y units

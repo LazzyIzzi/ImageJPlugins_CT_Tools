@@ -44,6 +44,7 @@ public class CT_Recon_ParallelBeam implements ActionListener, DialogListener, Im
 		int rotationAxis;
 		boolean useScaleFactor;
 	}
+	
 	class ReconStatusListener implements Runnable // J. Anderson 1999
 	{
 		Thread t;
@@ -139,6 +140,9 @@ public class CT_Recon_ParallelBeam implements ActionListener, DialogListener, Im
 	ChoiceField sinoCF,axisShiftCF, cartFilterCF,extWidthCF,extShapeCF, fixRingsCF,fixRaysCF,sumRuleCF;		
 	SliderField cartCutSF,beamHardenSF;
 	CheckboxField useScaleFactorCBF;
+	double scaleFactor = 6000;
+	boolean useScaleFactor = false;
+
 	
 	//The background color for the GenericDialog just because I like it.
 	final Color myColor = new Color(240,230,190);//slightly darker than buff
@@ -176,13 +180,34 @@ public class CT_Recon_ParallelBeam implements ActionListener, DialogListener, Im
 				IJ.showMessage("Please open and select a 32-bit sinogram image.");
 				return;
 			}
+			DialogSettings ds = getDialogSettings();
 			imageImp=WindowManager.getImage(item);
-
+			double maxVal = imageImp.getStatistics().max;
+			//scaleFactor = scaleFactorNF.getNumber();
+			switch (imageImp.getBitDepth())
+			{
+			case 32:
+				if( maxVal > 5.46)
+				{
+					IJ.showMessage("Sinogram maximum value of "+maxVal+" is greater than 5.46 exceeding the reconstructors dynamic range.");
+					return;
+				}
+				break;
+			case 16:
+				//if(maxVal> 32767)
+				if(maxVal/ds.scaleFactor> 5.46)
+				{
+					//IJ.showMessage("Sinogram maximum value of "+maxVal+" is greater than 32767 exceeding the reconstructors dynamic range.");
+					IJ.showMessage("Sinogram maximum scale value of "+maxVal+"/"+ds.scaleFactor + "=" + maxVal/ds.scaleFactor +"\nis greater than 5.46 exceeding the reconstructors dynamic range.");
+					return;
+				}
+				break;
+			}
+			
 			IJ.showStatus("Reconstructing");
 			ImagePlus sliceImp = imageImp.crop("whole-slice");
-			ImagePlus reconImp = reconstruct(sliceImp,getDialogSettings());
-			
-			
+			ImagePlus reconImp = reconstruct(sliceImp,ds);
+					
 			//if the image "TestImage.rcon" does not exist
 			//Copy Properties and Calibration and convert from 1/pixel to 1/cm
 			Calibration reconCal = reconImp.getCalibration();
@@ -261,8 +286,7 @@ public class CT_Recon_ParallelBeam implements ActionListener, DialogListener, Im
 	 * @return an ImagePlus reference to the copied image.
 	 */
 	private ImagePlus convertTo16bitTifFile(String destDir, ImagePlus sinoImp, String destTitle)
-	{
-		
+	{		
 		ImagePlus copy16bitImp = IJ.createImage(destTitle, sinoImp.getWidth(), sinoImp.getHeight(), sinoImp.getNSlices(), 16);
 		IJ.run(copy16bitImp, "Set...", "value=6000 stack");
 		ImageCalculator.run(copy16bitImp, sinoImp, "Multiply stack");
@@ -310,6 +334,9 @@ public class CT_Recon_ParallelBeam implements ActionListener, DialogListener, Im
 				case "sinogram":
 					IJ.runMacro("selectWindow(\"" + imageImp.getTitle() + "\")");
 					rotAxisNF.setNumber(imageImp.getWidth()/2);
+					setScaleFactorFromSinoProperty(imageImp);
+					useScaleFactorCBF.getCheckBox().setState(useScaleFactor);
+					scaleFactorNF.setNumber(scaleFactor);
 					break;
 				}
 			}
@@ -759,14 +786,20 @@ public class CT_Recon_ParallelBeam implements ActionListener, DialogListener, Im
 			return;
 		}
 
+		//get a lit of open 32bit or 16bit images
 		winTitles =getImages();
 		if(winTitles.length==0)
 		{
-			IJ.showMessage("There are no 32-Bit images present");
+			IJ.showMessage("There are no 32bit or 16bit images present");
 			return;
 		}
+		//Select the current one
+		imageImp = WindowManager.getCurrentImage();
+		//set the scale factor from the image ScaleFactor property
+		//if no ScaleFactor property set defaults
+		setScaleFactorFromSinoProperty(imageImp);
 
-		//Updates the Image selection menu
+		//Track the Image selection menu
 		ImagePlus.addImageListener(this);	
 
 		//The dialog Choice items
@@ -777,6 +810,7 @@ public class CT_Recon_ParallelBeam implements ActionListener, DialogListener, Im
 		String[] extShape = {"Half Sine","Linear","Half Gaussian","Exponential","1 over r","1 over r sq"};
 		String[] fixRings = {"Don't Fix","with 1x3 median","that are 2x Avg","that are 4x Avg","that are 6x Avg","that are 8x Avg","that are 10x Avg"};
 		Font myFont = new Font(Font.DIALOG, Font.BOLD, 12);
+		Font warningFont = new Font(Font.DIALOG, Font.ITALIC+Font.BOLD, 12);
 
 		//Load the DialogPlus methods for event handlers
 		GenericDialogAddin gda = new GenericDialogAddin();
@@ -786,8 +820,12 @@ public class CT_Recon_ParallelBeam implements ActionListener, DialogListener, Im
 		gd.addDialogListener(this);
 		gd.addMessage("Tomographic Reconstruction of parallel ray sinograms"
 				+ "\n using direct Fourier inversion(Flannery et.al. Science 1987)",myFont);
+		gd.setInsets(0, 20, 0);
+		gd.addMessage("Opacity values for 32Bit images must be < 5.46"
+				+ "\nand for 16Bit images maxOpacity/ScaleFactor must be < 5.46."
+				+ "\nRescaling by other than the original scaleFactor"
+				+ "\nproduces incorrect attenuations.",warningFont);
 
-		imageImp = WindowManager.getCurrentImage();
 		gd.addChoice("Data_Source", winTitles, imageImp.getTitle());
 		sinoCF = gda.getChoiceField(gd, null, "sinogram");
 		gd.setInsets(0, 110, 0);
@@ -818,10 +856,13 @@ public class CT_Recon_ParallelBeam implements ActionListener, DialogListener, Im
 		gd.addSlider("Beam_Harden:", 0, 1, 0, .01);
 		beamHardenSF = gda.getSliderField(gd, null, null, "beamHarden");
 		
-		gd.addCheckbox("Use_Scale_Factor", false);
+		gd.addMessage("If a sinogram has a ScaleFactor property it is automatically imported.");
+		gd.setInsets(0, 20, 0);
+		gd.addCheckbox("Use_Scale_Factor", useScaleFactor);
 		useScaleFactorCBF = gda.getCheckboxField(gd, "useScaleFactor");
-		gd.addNumericField("Scale_factor", 6000);
+		gd.addNumericField("Scale_factor", scaleFactor);
 		scaleFactorNF = gda.getNumericField (gd, null, "scaleFactor");
+		
 
 		gd.setInsets(5, 187, 0);
 		gd.addButton("Reconstruct Test Slice", this);
@@ -831,8 +872,8 @@ public class CT_Recon_ParallelBeam implements ActionListener, DialogListener, Im
 
 		gd.setOKLabel("OK(reconstruct all)");
 
-		gd.addHelp("https://lazzyizzi.github.io/CtRecon.html");
-		
+		gd.addHelp("https://lazzyizzi.github.io/CtRecon.html");		
+
 		gd.showDialog();
 
 		if(gd.wasCanceled())
@@ -853,7 +894,27 @@ public class CT_Recon_ParallelBeam implements ActionListener, DialogListener, Im
 					testImp.close();
 				}
 				imageImp=WindowManager.getImage(item);								
-				ImagePlus reconImp = reconstruct(imageImp,getDialogSettings());				
+				double maxVal = imageImp.getStatistics().max;
+				DialogSettings ds = getDialogSettings();
+				switch (imageImp.getBitDepth())
+				{
+				case 32:
+					if( maxVal > 5.46)
+					{
+						IJ.showMessage("Sinogram maximum value of "+maxVal+" is greater than 5.46 exceeding the reconstructors dynamic range.");
+						return;
+					}
+					break;
+				case 16:
+					if(maxVal/ds.scaleFactor> 5.46)
+					{
+						IJ.showMessage("Sinogram maximum scale value of "+maxVal+"/"+ds.scaleFactor + "=" + maxVal/ds.scaleFactor +"\nis greater than 5.46 exceeding the reconstructors dynamic range.");
+						return;
+					}
+					break;
+				}
+				
+				ImagePlus reconImp = reconstruct(imageImp,ds);				
 				displayReconImage(reconImp);
 				ImagePlus.removeImageListener(this);
 			}
@@ -1018,5 +1079,20 @@ public class CT_Recon_ParallelBeam implements ActionListener, DialogListener, Im
 	return ok;	
 	}
 
+	//*********************************************************************************************
+
+	private void setScaleFactorFromSinoProperty(ImagePlus imp)
+	{
+		String scaleFactorStr = imp.getProp("ScaleFactor");
+		useScaleFactor = false;
+		if(scaleFactorStr!=null) 
+		{
+			if(GenericDialogAddin.isNumeric(scaleFactorStr))
+			{
+				scaleFactor = Double.parseDouble(scaleFactorStr);
+				useScaleFactor=true;
+			}
+		}
+	}
 
 }

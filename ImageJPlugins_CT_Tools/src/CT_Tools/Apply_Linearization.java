@@ -8,6 +8,7 @@ import java.util.Vector;
 
 import ij.IJ;
 import ij.ImagePlus;
+import ij.ImageStack;
 import ij.WindowManager;
 import ij.gui.GenericDialog;
 import ij.gui.DialogListener;
@@ -20,287 +21,234 @@ import jhd.ImageJAddins.GenericDialogAddin.*;
 
 public class Apply_Linearization implements PlugIn, DialogListener
 {
-	final int numFldDigits = 6;
-	int numFldCols = numFldDigits + 4;
-	String[] paramChoices;
-	double[][] coeffs;
-	Object sinoData;
-	boolean useScaleFactor;
-	double scaleFactor = 6000;
 	
-	Vector<TextField> numTxtFldVector;
 	Font myFont = new Font(Font.DIALOG, Font.BOLD, 12);
 	final Color myColor = new Color(240,230,190);//slightly darker than buff
 	
 	ImagePlus dataImp;
-	ImageProcessor dataIp;
+	
 	ResultsTable fitRT;
+	final int numFldDigits = 6;
+	int numFldCols = numFldDigits + 4;
+	
 	GenericDialog gd;
-	GenericDialogAddin gda = new GenericDialogAddin();
+	double A,B,C,D,E,F,G,rSqr;
+	String paramsTableChoice, fitChoice;
+	boolean useScaleFactor,createNewImage;
+	double scaleFactor = 6000;	//default scale factor
+
+		
+	GenericDialogAddin gda = new GenericDialogAddin();	
 	ChoiceField sinoCF,resultTableCF, fitCF;
 	CheckboxField createNewCBF,useScaleFactorCBF;
 	NumericField scaleFactorNF;
+	NumericField[]  coefNFs;
+	
+	//*********************************************************************************************
+	private void getSettings()
+	{
+		A = gd.getNextNumber();
+		B = gd.getNextNumber();
+		C = gd.getNextNumber();
+		D = gd.getNextNumber();
+		E = gd.getNextNumber();
+		F = gd.getNextNumber();
+		G = gd.getNextNumber();
+		paramsTableChoice = gd.getNextChoice();
+		fitChoice = gd.getNextChoice();
+		useScaleFactor = gd.getNextBoolean();
+		createNewImage = gd.getNextBoolean();
+		scaleFactor = gd.getNextNumber();
+	}
+	
+	//*********************************************************************************************
+	private void applyFit()
+	{
+		Object[] sinoData;
+		double[] coeffArr = new double[7];
+		
+		coeffArr[0] = A;
+		coeffArr[1] = B;
+		coeffArr[2] = C;
+		coeffArr[3] = D;
+		coeffArr[4] = E;
+		coeffArr[5] = F;
+		coeffArr[6] = G;
+				
+		if(useScaleFactor==false) scaleFactor = 1;
+		
+		Choice fitChoice = fitCF.getChoice();
+		ImagePlus dataImage =  WindowManager.getImage(sinoCF.getChoice().getSelectedItem());
+		int nSlices = dataImage.getNSlices();
+		if(createNewImage)
+		{				
+			String copyTitle = dataImage.getTitle();
+			
+			copyTitle +=  ("-" + fitChoice.getSelectedItem());				
+			ImagePlus copyImage = dataImage.duplicate();
+			copyImage.setTitle(copyTitle);
+			copyImage.setProp("Linearization", fitChoice.getSelectedItem());
+			copyImage.setProp("LinearizationA", coeffArr[0]);				
+			copyImage.setProp("LinearizationB", coeffArr[1]);				
+			copyImage.setProp("LinearizationC", coeffArr[2]);				
+			copyImage.setProp("LinearizationD", coeffArr[3]);				
+			copyImage.setProp("LinearizationE", coeffArr[4]);				
+			copyImage.setProp("LinearizationF", coeffArr[5]);				
+			copyImage.setProp("LinearizationG", coeffArr[6]);				
+			copyImage.setProp("LinearizationR", rSqr);				
 
-	@Override
-	public void run(String arg)
-	{		
-		String[] imageTitles = WindowManager.getImageTitles();
-		String[] nonImageTitles = WindowManager.getNonImageTitles();
-		
-		//Filter nonImageTitles by looking at headings
-		ArrayList<String> titleList = new ArrayList<>();
-		for(String title :nonImageTitles)
-		{
-			ResultsTable rt = ResultsTable.getResultsTable(title);
-			if(rt!=null)
-			{
-				if(rt.getTitle().contains("Fit Parameters"))
-				//if(rt.columnExists("Fit"))
-				{
-					titleList.add(title);
-				}
-			}
-		}		
-		String[] resultTableTitles = titleList.toArray(new String[titleList.size()]);		
-		
-		//Remove RGB images from the images list
-		titleList.clear();
-		for(String title : imageTitles)
-		{
-			if(WindowManager.getImage(title).getBitDepth() != 24)
-			{
-				titleList.add(title);
-			}
-		}
-		imageTitles = titleList.toArray(new String[titleList.size()]);
-
-		if(resultTableTitles.length==0|| imageTitles.length ==0)
-		{
-			IJ.error("This plugin requires at least one image\n "
-					+ "and one \"Fit Parameters\" window.");
-			return;
-		}
-		
-		handleResultTableChoice(resultTableTitles[0]);
-		if(WindowManager.getImage(imageTitles[0]).getBitDepth() == 32) useScaleFactor = false;
-		else useScaleFactor = true;
-
-		gda=new GenericDialogAddin();
-		gd = new GenericDialog("Apply Sinogram Linearization");
-		
-		gd.addChoice("Sinogram Choice", imageTitles, imageTitles[0]);
-		sinoCF = gda.getChoiceField(gd, null, "sinoChoice");
-		gd.addChoice("Results Choice", resultTableTitles, resultTableTitles[0]);
-		resultTableCF = gda.getChoiceField(gd, null, "resultsTable");
-		
-		gd.setInsets(10,0,0);
-		gd.addChoice("Fit Choice", paramChoices, paramChoices[fitRT.getCounter()-1]);
-		fitCF = gda.getChoiceField(gd, null, "fit");
-						
-		gd.addDialogListener(this);
-		gd.addMessage("Select Fit or enter the beam hardening\n"
-				+ "polynomial coefficients.",myFont,Color.BLACK);
-		if(fitRT!=null)
-		{
-			gd.addNumericField("A0 or A", coeffs[0][5],numFldDigits,numFldCols,null);
-			gd.addNumericField("A1 or B", coeffs[1][5],numFldDigits,numFldCols,null);
+			copyImage.show();
+			sinoData = copyImage.getStack().getImageArray();
 		}
 		else
 		{
-			gd.addNumericField("A0 or A", 0,numFldDigits,numFldCols,null);
-			gd.addNumericField("A1 or B", 0,numFldDigits,numFldCols,null);	
-		}
-		gd.addNumericField("A2 or C", 0,numFldDigits,numFldCols,null);
-		gd.addNumericField("A3 or D", 0,numFldDigits,numFldCols,null);
-		gd.addNumericField("A4 or E", 0,numFldDigits,numFldCols,null);
-		gd.addNumericField("A5 or F", 0,numFldDigits,numFldCols,null);
-		gd.addNumericField("A6 or G", 0,numFldDigits,numFldCols,null);
-		gd.addCheckbox("Use_Scale Factor", useScaleFactor);
-		useScaleFactorCBF = gda.getCheckboxField(gd, "useScaleFactor");
-		gd.addNumericField("Scale_Factor", scaleFactor);
-		scaleFactorNF = gda.getNumericField(gd, null, "scaleFactor");
-		gd.addCheckbox("Create new Image", true);
-		createNewCBF = gda.getCheckboxField(gd, "createNew");
-		gd.addMessage("Click OK to apply them\n"
-				+ "to your sinogram",myFont,Color.BLACK);
-		gd.addHelp("https://lazzyizzi.github.io/Linearization.html");
-		gd.setBackground(myColor);
-		gd.showDialog();
-		
-
-		if(gd.wasCanceled())
-		{
-			return;
+			sinoData =  dataImage.getStack().getImageArray();
+			dataImage.setTitle(dataImage.getTitle() + "-" + fitChoice.getSelectedItem());
 		}
 		
-		else //Apply the polynomial correction to the sinogram
-		{
-			double A = gd.getNextNumber();
-			double B = gd.getNextNumber();
-			double C = gd.getNextNumber();
-			double D = gd.getNextNumber();
-			double E = gd.getNextNumber();
-			double F = gd.getNextNumber();
-			double G = gd.getNextNumber();
-			useScaleFactor = gd.getNextBoolean();
-			if(useScaleFactor) scaleFactor = gd.getNextNumber();
-			else scaleFactor = 1;
-			boolean createNew = gd.getNextBoolean();
-			
-			Choice fitChoice = fitCF.getChoice();
-			if(createNew)
-			{				
-				ImagePlus dataImage =  WindowManager.getImage(sinoCF.getChoice().getSelectedItem());
-				String copyTitle = dataImage.getTitle();
-				
-				copyTitle += fitChoice.getSelectedItem();				
-				ImagePlus copyImage = dataImage.duplicate();
-				copyImage.setTitle(copyTitle);
-				copyImage.setProp("Linearization", fitChoice.getSelectedItem());
-//				ImageJ properties must be < 80 characters to display in ShowInfo
-//				String corrStr = "A="+A+", B="+B+",C="+C+", D="+D+", E="+E+", F="+F+", G="+G;
-//				copyImage.setProp("FitParams", corrStr);
-				copyImage.setProp("LinearizationA", A);				
-				copyImage.setProp("LinearizationB", B);				
-				copyImage.setProp("LinearizationC", C);				
-				copyImage.setProp("LinearizationD", D);				
-				copyImage.setProp("LinearizationE", E);				
-				copyImage.setProp("LinearizationF", F);				
-				copyImage.setProp("LinearizationG", G);				
+		double myDbl;
+		int i,slice;
+		//long start = System.nanoTime();
 
-				copyImage.show();
-				sinoData = copyImage.getProcessor().getPixels();
-			}
-			else
+		String fitStr = fitChoice.getSelectedItem();
+		switch(fitStr)
+		{
+		case "Inverse Rodbard":
+			if(sinoData[0] instanceof float[])
 			{
-				sinoData = getSinoData(sinoCF.getChoice().getSelectedItem());
-			}
-			String fitStr = fitChoice.getSelectedItem();
-			double myDbl;
-			int i;
-			switch(fitStr)
-			{
-			case "Inverse Rodbard":
-				//Formula: y = c*((x-a)/(d-x))^(1/b)
-				if(sinoData instanceof float[])
+				for(slice=0;slice<nSlices;slice++)
 				{
-					float[] fData = (float[]) sinoData;
+					float[] fData = (float[]) sinoData[slice];
 					for( i=0;i<fData.length;i++)
 					{
 						myDbl = fData[i]/scaleFactor;
-						myDbl = C*Math.pow((myDbl-A)/(D-myDbl),1/B);
+						myDbl = invRodbardCalc(myDbl,coeffArr);
 						fData[i] = (float)(myDbl*scaleFactor);
-					}				
+					}
 				}
-				else if(sinoData instanceof int[])
+			}
+			else if(sinoData[0] instanceof int[])
+			{
+				for(slice=0;slice<nSlices;slice++)
 				{
-					int[] fData = (int[]) sinoData;
+					int[] fData = (int[]) sinoData[slice];
 					for( i=0;i<fData.length;i++)
 					{
 						myDbl = fData[i]/scaleFactor;
-						myDbl = C*Math.pow((myDbl-A)/(D-myDbl),1/B);
+						myDbl = invRodbardCalc(myDbl,coeffArr);
 						if(myDbl<0) myDbl=0;
 						fData[i] = (int)(myDbl*scaleFactor);
-					}				
+					}
 				}
-				else if(sinoData instanceof short[])
+			}
+			else if(sinoData[0] instanceof short[])
+			{
+				for(slice=0;slice<nSlices;slice++)
 				{
-					short[] fData = (short[]) sinoData;
+					short[] fData = (short[]) sinoData[slice];
 					for( i=0;i<fData.length;i++)
 					{						
 						myDbl = fData[i]/scaleFactor;
-						myDbl = C*Math.pow((myDbl-A)/(D-myDbl),1/B);
+						myDbl = invRodbardCalc(myDbl,coeffArr);
 						if(myDbl<0) myDbl=0;
 						fData[i] = (short)(myDbl*scaleFactor);
-					}				
+					}	
 				}
-				else if(sinoData instanceof byte[])
+			}
+			else if(sinoData[0] instanceof byte[])
+			{
+				for(slice=0;slice<nSlices;slice++)
 				{
-					byte[] fData = (byte[]) sinoData;
+					byte[] fData = (byte[]) sinoData[slice];
 					for( i=0;i<fData.length;i++)
 					{
 						myDbl = fData[i]/scaleFactor;
-						myDbl = C*Math.pow((myDbl-A)/(D-myDbl),1/B);
+						myDbl = invRodbardCalc(myDbl,coeffArr);
 						if(myDbl<0) myDbl=0;
 						fData[i] = (byte)(myDbl*scaleFactor);
-					}				
+					}
 				}
-				break;
-			default:
-				if(sinoData instanceof float[])
+			}
+			break;
+		default:
+			if(sinoData[0] instanceof float[])
+			{
+				for(slice=0;slice<nSlices;slice++)
 				{
-					float[] fData = (float[]) sinoData;
+					float[] fData = (float[]) sinoData[slice];
 					for( i=0;i<fData.length;i++)
 					{
 						myDbl = fData[i]/scaleFactor;
-						myDbl = A + 
-								B*myDbl + 
-								C*Math.pow(myDbl,2) + 
-								D*Math.pow(myDbl,3) +
-								E*Math.pow(myDbl,4) +
-								F*Math.pow(myDbl,5) +
-								G*Math.pow(myDbl,6);					
+						myDbl = polyCalc(myDbl,coeffArr);
 						fData[i] = (float)(myDbl*scaleFactor);
-					}				
+					}
 				}
-				else if (sinoData instanceof int[])
+			}
+			else if (sinoData[0] instanceof int[])
+			{
+				for(slice=0;slice<nSlices;slice++)
 				{
-					int[] iSinoData = (int[]) sinoData;
+					int[] iSinoData = (int[]) sinoData[slice];
 					for( i=0;i<iSinoData.length;i++)
 					{
 						myDbl = (double)iSinoData[i]/scaleFactor;
-						myDbl = A +
-								B*myDbl +
-								C*Math.pow(myDbl,2) + 
-								D*Math.pow(myDbl,3) +
-								E*Math.pow(myDbl,4) +
-								F*Math.pow(myDbl,5) +
-								G*Math.pow(myDbl,6);
+						myDbl = polyCalc(myDbl,coeffArr);
 						if(myDbl<0) myDbl=0;
 						iSinoData[i] = (int)(myDbl*scaleFactor);				
-					}								
+					}
 				}
-				else if (sinoData instanceof short[])
+			}
+			else if (sinoData[0] instanceof short[])
+			{
+				for(slice=0;slice<nSlices;slice++)
 				{
-					short[] iSinoData = (short[]) sinoData;
+					short[] iSinoData = (short[]) sinoData[slice];
 					for( i=0;i<iSinoData.length;i++)
 					{
 						myDbl = (double)iSinoData[i]/scaleFactor;
-						myDbl = A +
-								B*myDbl +
-								C*Math.pow(myDbl,2) + 
-								D*Math.pow(myDbl,3) +
-								E*Math.pow(myDbl,4) +
-								F*Math.pow(myDbl,5) +
-								G*Math.pow(myDbl,6);
+						myDbl = polyCalc(myDbl,coeffArr);
 						if(myDbl<0) myDbl=0;
 						iSinoData[i] = (short)(myDbl*scaleFactor);				
-					}								
+					}
 				}
-				else if (sinoData instanceof byte[])
+			}
+			else if (sinoData[0] instanceof byte[])
+			{
+				for(slice=0;slice<nSlices;slice++)
 				{
-					byte[] iSinoData = (byte[]) sinoData;
+					byte[] iSinoData = (byte[]) sinoData[slice];
 					for( i=0;i<iSinoData.length;i++)
 					{
 						myDbl = (double)iSinoData[i]/scaleFactor;
-						myDbl = A +
-								B*myDbl +
-								C*Math.pow(myDbl,2) + 
-								D*Math.pow(myDbl,3) +
-								E*Math.pow(myDbl,4) +
-								F*Math.pow(myDbl,5) +
-								G*Math.pow(myDbl,6);
+						myDbl = polyCalc(myDbl,coeffArr);
 						if(myDbl<0) myDbl=0;
 						iSinoData[i] = (byte)(myDbl*scaleFactor);				
-					}								
+					}
 				}
-				break;
 			}
-			
+			break;
 		}
+		//long end = System.nanoTime();
+		//Surprise! This implementation was about 10-20% faster than with local variables
+		//System.out.println("Linearization6 = "+(end-start) + "nsec" );
+	}
+
+	//*******************************************************************************************************
+
+	private double invRodbardCalc(double val, double[] coeffArr)
+	{	//Formula: y = c*((x-a)/(d-x))^(1/b)
+		return coeffArr[2]*Math.pow((val-coeffArr[0])/(coeffArr[3]-val),1/coeffArr[1]);		
 	}
 	
-  
+	//*******************************************************************************************************
+
+	private double polyCalc(double val, double[] coeffArr)
+	{
+		return coeffArr[0] + coeffArr[1]*val + coeffArr[2]*Math.pow(val,2) + 
+				coeffArr[3]*Math.pow(val,3) + coeffArr[4]*Math.pow(val,4) +
+				coeffArr[5]*Math.pow(val,5) + coeffArr[6]*Math.pow(val,6);		
+	}
+
 	//*******************************************************************************************************
 
 	@Override
@@ -318,16 +266,17 @@ public class Apply_Linearization implements PlugIn, DialogListener
 				{
 				case "sinoChoice":
 					String title = sinoCF.getChoice().getSelectedItem();
-					if(WindowManager.getImage(title).getBitDepth() == 32) useScaleFactor = false;
-					else  useScaleFactor = true;
+					dataImp = WindowManager.getImage(title);
+					setScaleFactorFromSinoProperty(dataImp);
+					scaleFactorNF.setNumber(scaleFactor);
 					useScaleFactorCBF.getCheckBox().setState(useScaleFactor);
 					break;
 				case "fit":
-					handleFitChoice(fitCF.getChoice().getSelectedIndex());
+					handleFitChoice();
 					break;
 				case "resultsTable":
 					handleResultTableChoice(resultTableCF.getChoice().getSelectedItem());
-					handleFitChoice(fitCF.getChoice().getSelectedIndex());
+					handleFitChoice();
 					break;
 				}
 			}
@@ -347,50 +296,178 @@ public class Apply_Linearization implements PlugIn, DialogListener
 				}
 			}
 		}
+		getSettings();
 		return dialogOK;
 	}
 	
-	@SuppressWarnings("unchecked")
-	private void handleFitChoice(int colIndex)
-	{
-		numTxtFldVector = gd.getNumericFields();
-		TextField[] tfArr = numTxtFldVector.toArray(new TextField[numTxtFldVector.size()]);
-		//tfArr.length-1 so we don't write R^2 in the scaleFactor box 
-		for(int i=0;i<tfArr.length-1;i++)
-		{
-			tfArr[i].setText(Double.toString(coeffs[i][colIndex]));
-		}
-	}
-	
-	private void handleResultTableChoice(String resultTableTitle)
-	{
-		//import the table values if the Correction results table is present
-		int rowCnt=0,colCnt=0;
+	//*******************************************************************************************************
 
-		//fitRT = ResultsTable.getResultsTable("Fit Params");
-		fitRT = ResultsTable.getResultsTable(resultTableTitle);
-		if(fitRT!=null)
+	private String[] getFitTableTitles(String[] nonImageTitles)
+	{
+		//Filter nonImageTitles by looking at headings
+		ArrayList<String> titleList = new ArrayList<>();
+		for(String title :nonImageTitles)
 		{
-			colCnt = fitRT.getLastColumn();
-			rowCnt = fitRT.getCounter();
-			coeffs = new double[colCnt][rowCnt];
-			int row,col=0;
-			for(row=0;row<rowCnt;row++)
+			ResultsTable rt = ResultsTable.getResultsTable(title);
+			if(rt!=null)
 			{
-				for(col=0;col<colCnt;col++)
+				if(rt.getTitle().contains("Fit Parameters"))
 				{
-					coeffs[col][row] = fitRT.getValueAsDouble(col+1, row);
+					titleList.add(title);
 				}
 			}
-			String[] colHdr = fitRT.getHeadings();			
-			paramChoices = fitRT.getColumnAsStrings(colHdr[0]);
-		}
+		}		
+		return  titleList.toArray(new String[titleList.size()]);		
 	}
+
+	//*********************************************************************************************	
+
+	private String[] getImageTitles(String[] imageTitles)
+	{
+		//Remove RGB images from the images list
+		ArrayList<String> titleList = new ArrayList<>();
+		for(String title : imageTitles)
+		{
+			if(WindowManager.getImage(title).getBitDepth() != 24)
+			{
+				titleList.add(title);
+			}
+		}
+		return titleList.toArray(new String[titleList.size()]);
+	}
+
+	//*********************************************************************************************
 	
 	private Object getSinoData(String imageTitle)
 	{
 		return  WindowManager.getImage(imageTitle).getProcessor().getPixels();
 	}
+	
+	//*********************************************************************************************
+	
+	private Object getSinoData(String imageTitle, int slice)
+	{
+		ImageStack stack = WindowManager.getImage(imageTitle).getStack();
+		if(slice>stack.getSize()) return null;
+		else return  WindowManager.getImage(imageTitle).getStack().getPixels(slice);
+	}
+	
+	//*********************************************************************************************
 
+	private void handleFitChoice()
+	{
+		int row = fitCF.getChoice().getSelectedIndex();
+		for(int i=1;i<fitRT.getLastColumn();i++)
+		{
+			coefNFs[i].setNumber(fitRT.getValue(fitRT.getColumnHeading(i), row));
+		}
+		rSqr = fitRT.getValue("R^2", row);
+	}
+	
+	//*********************************************************************************************
 
+	private void handleResultTableChoice(String resultTableTitle)
+	{
+		fitRT = ResultsTable.getResultsTable(resultTableTitle);
+		if(fitRT!=null)
+		{
+			//Users may have deleted Fit Parameters rows
+			//rebuild the fitChoice menu from the "Fit" column 0		
+			fitCF.setChoices(fitRT.getColumnAsStrings(fitRT.getColumnHeading(0)));
+			fitCF.getChoice().select(fitRT.getCounter()-1);
+			//import the table values by row
+			for(int i=1;i<fitRT.getLastColumn();i++)
+			{
+				coefNFs[i].setNumber(fitRT.getValue(fitRT.getColumnHeading(i), fitRT.getCounter()-1));
+			}			
+			rSqr = fitRT.getValue("R^2", fitRT.getCounter()-1);
+		}
+	}
+
+	//*********************************************************************************************
+
+	@Override
+	public void run(String arg)
+	{		
+		String[] fitTableTitles = getFitTableTitles( WindowManager.getNonImageTitles())	;		
+		String[] imageTitles = getImageTitles(WindowManager.getImageTitles());
+				
+		if(fitTableTitles.length==0|| imageTitles.length ==0)
+		{
+			IJ.error("This plugin requires at least one grayscale image\n "
+					+ "and one \"Fit Parameters\" window.");
+			return;
+		}
+				
+		fitRT = ResultsTable.getResultsTable(fitTableTitles[0]);
+		setScaleFactorFromSinoProperty(WindowManager.getImage(imageTitles[0]));
+
+		gda=new GenericDialogAddin();
+		gd = new GenericDialog("Apply Sinogram Linearization");
+		gd.addDialogListener(this);
+		
+		gd.addChoice("Sinogram Choice", imageTitles, imageTitles[0]);
+		sinoCF = gda.getChoiceField(gd, null, "sinoChoice");
+		gd.addChoice("Results Choice", fitTableTitles, fitTableTitles[0]);
+		resultTableCF = gda.getChoiceField(gd, null, "resultsTable");
+		
+		gd.setInsets(10,0,0);
+		//Default to last item in fitChoices List  "Straight Line"
+		int defaultRowIndex = fitRT.getCounter()-1;
+		String[] fitChoices = fitRT.getColumnAsStrings("Fit");
+		gd.addChoice("Fit Choice", fitChoices,  fitChoices[defaultRowIndex]);
+		fitCF = gda.getChoiceField(gd, null, "fit");
+						
+		gd.addMessage("Select Fit or enter the beam hardening\n"
+				+ "polynomial coefficients.",myFont,Color.BLACK);
+		
+		coefNFs = new NumericField[fitRT.getLastColumn()];
+		for(int i=1;i<fitRT.getLastColumn();i++)
+		{
+			gd.addNumericField(fitRT.getColumnHeading(i), fitRT.getValue(fitRT.getColumnHeading(i), defaultRowIndex),numFldDigits,numFldCols,null);
+			coefNFs[i] = gda.getNumericField(gd, null, "coef"+i);
+		}
+		rSqr = fitRT.getValue("R^2", defaultRowIndex);
+		
+		gd.addCheckbox("Use_Scale Factor", useScaleFactor);
+		useScaleFactorCBF = gda.getCheckboxField(gd, "useScaleFactor");
+		gd.addNumericField("Scale_Factor", scaleFactor);
+		
+		scaleFactorNF = gda.getNumericField(gd, null, "scaleFactor");
+		gd.addCheckbox("Create new Image", true);
+		createNewCBF = gda.getCheckboxField(gd, "createNew");
+		gd.addMessage("Click OK to apply them\n"
+				+ "to your sinogram",myFont,Color.BLACK);
+		gd.addHelp("https://lazzyizzi.github.io/Linearization.html");
+		gd.setBackground(myColor);
+		gd.showDialog();
+		
+
+		if(gd.wasCanceled())
+		{
+			return;
+		}
+		else
+		{
+			getSettings();
+			applyFit();
+			IJ.showStatus("Apply Linearization Done");
+		}
+	}
+	
+	//*******************************************************************************************************
+
+	private void setScaleFactorFromSinoProperty(ImagePlus imp)
+	{
+		String scaleFactorStr = imp.getProp("ScaleFactor");
+				useScaleFactor=false;			
+		if(scaleFactorStr!=null) 
+		{
+			if(GenericDialogAddin.isNumeric(scaleFactorStr))
+			{
+				scaleFactor = Double.parseDouble(scaleFactorStr);
+				useScaleFactor=true;
+			}
+		}
+	}
 }

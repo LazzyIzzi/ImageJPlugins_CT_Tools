@@ -6,8 +6,9 @@ import ij.WindowManager;
 import ij.gui.DialogListener;
 import ij.gui.GenericDialog;
 import ij.measure.Calibration;
+import ij.plugin.LutLoader;
 import ij.plugin.filter.PlugInFilter;
-import ij.process.ImageProcessor;
+import ij.process.*;
 import jhd.ImageJAddins.GenericDialogAddin;
 import jhd.ImageJAddins.GenericDialogAddin.*;
 import jhd.MuMassCalculator.MuMassCalculator;
@@ -112,7 +113,12 @@ public class Tag_Image_To_MuLin implements PlugInFilter, DialogListener
 					float[] tauPix = (float[])tauImp.getProcessor().getPixels();
 					mlt.tagsToLinearAttn(tauPix, myTagSet, keV);
 				}
+				
 				tauImp.show();
+				//IJ.run(tauImp, "Grays", "");
+				//LutLoader lutLoader = new LutLoader();
+				//lutLoader.run("grays");
+				new LutLoader().run("grays");
 				tauImp.getProcessor().setMinAndMax(tauImp.getStatistics().min, tauImp.getStatistics().max);
 				tauImp.updateAndDraw();
 			}
