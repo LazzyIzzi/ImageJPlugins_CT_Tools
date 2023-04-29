@@ -299,14 +299,13 @@ public class Linearization_Fitter implements PlugIn , DialogListener ,ActionList
 		ResultsTable fitRT = ResultsTable.getResultsTable("Fit Parameters");
 		if(fitRT==null) fitRT = new ResultsTable();
 		fitRT.setPrecision(5);
+		fitRT.deleteRows(0, fitRT.getCounter());
 		String[] hdr = {"A","B","C","D","E","F","G","H"};
 
 		double[] fitParams;
 		int i;
 		
-		fitRT.deleteRows(0, fitRT.getCounter());
-
-		fitRT.incrementCounter();
+		fitRT.incrementCounter();		
 		crvfit = new CurveFitter(dataProj,modelProj);
 		crvfit.doFit(CurveFitter.POLY6);
 		fitParams = crvfit.getParams();
@@ -314,10 +313,9 @@ public class Linearization_Fitter implements PlugIn , DialogListener ,ActionList
 		for(i=0;i< fitParams.length-1;i++)
 		{
 			fitRT.addValue(hdr[i], fitParams[i]);
-			//System.out.print(hdr[i]+"="+fitParams[i] + ", ");
 		}
-		//System.out.println(" ");
 		fitRT.addValue("R^2", crvfit.getRSquared());
+		fitRT.addValue("Eeff", keV);		
 		
 	
 		fitRT.incrementCounter();
@@ -328,11 +326,9 @@ public class Linearization_Fitter implements PlugIn , DialogListener ,ActionList
 		for(i=0;i< fitParams.length-1;i++)
 		{
 			fitRT.addValue(hdr[i], fitParams[i]);
-			//System.out.print(hdr[i]+"="+fitParams[i] + ", ");
 		}
-		//System.out.println(" ");
 		fitRT.addValue("R^2", crvfit.getRSquared());
-
+		fitRT.addValue("Eeff", keV);		
 
 		fitRT.incrementCounter();
 		crvfit = new CurveFitter(dataProj,modelProj);
@@ -342,25 +338,21 @@ public class Linearization_Fitter implements PlugIn , DialogListener ,ActionList
 		for(i=0;i< fitParams.length-1;i++)
 		{
 			fitRT.addValue(hdr[i], fitParams[i]);
-			//System.out.print(hdr[i]+"="+fitParams[i] + ", ");
 		}
-		//System.out.println(" ");
 		fitRT.addValue("R^2", crvfit.getRSquared());
-
+		fitRT.addValue("Eeff", keV);		
 
 		fitRT.incrementCounter();
+		fitRT.addValue("Eeff", keV);		
 		crvfit = new CurveFitter(dataProj,modelProj);
 		crvfit.doFit(CurveFitter.POLY3);
 		fitParams = crvfit.getParams();
-		fitRT.addValue("Fit", CurveFitter.fitList[CurveFitter.POLY3]);
 		for(i=0;i< fitParams.length-1;i++)
 		{
 			fitRT.addValue(hdr[i], fitParams[i]);
-			//System.out.print(hdr[i]+"="+fitParams[i] + ", ");
 		}
-		//System.out.println(" ");
 		fitRT.addValue("R^2", crvfit.getRSquared());
-
+		fitRT.addValue("Fit", CurveFitter.fitList[CurveFitter.POLY3]);
 	
 		fitRT.incrementCounter();
 		crvfit = new CurveFitter(dataProj,modelProj);
@@ -370,10 +362,9 @@ public class Linearization_Fitter implements PlugIn , DialogListener ,ActionList
 		for(i=0;i< fitParams.length-1;i++)
 		{
 			fitRT.addValue(hdr[i], fitParams[i]);
-			//System.out.print(hdr[i]+"="+fitParams[i] + ", ");
 		}
-		//System.out.println(" ");
 		fitRT.addValue("R^2", crvfit.getRSquared());
+		fitRT.addValue("Eeff", keV);		
 
 		fitRT.incrementCounter();
 		crvfit = new CurveFitter(dataProj,modelProj);
@@ -381,35 +372,28 @@ public class Linearization_Fitter implements PlugIn , DialogListener ,ActionList
 		fitParams = crvfit.getParams();
 		fitRT.addValue("Fit", CurveFitter.fitList[CurveFitter.INV_RODBARD]);
 		for(i=0;i< fitParams.length-1;i++)
-		{
+		{				
 			fitRT.addValue(hdr[i], fitParams[i]);
-			//System.out.print(hdr[i]+"="+fitParams[i] + ", ");
 		}
-		//System.out.println(" ");
 		fitRT.addValue("R^2", crvfit.getRSquared());
-		
-
-	
+		fitRT.addValue("Eeff", keV);		
+			
 		fitRT.incrementCounter();
 		crvfit = new CurveFitter(dataProj,modelProj);
 		crvfit.doFit(CurveFitter.STRAIGHT_LINE);
 		fitParams = crvfit.getParams();	
 		fitRT.addValue("Fit", CurveFitter.fitList[CurveFitter.STRAIGHT_LINE]);
 		for(i=0;i< fitParams.length-1;i++)
-		{
+		{			
 			fitRT.addValue(hdr[i], fitParams[i]);
-			//System.out.print(hdr[i]+"="+fitParams[i] + ", ");
 		}
-		//System.out.println(" ");
 		fitRT.addValue("R^2", crvfit.getRSquared());
+		fitRT.addValue("Eeff", keV);		
 		
-
-		//System.out.println(" ");
-
 		fitRT.show("Fit Parameters");
-		TextWindow rtWin = (TextWindow)WindowManager.getWindow("Fit Parameters");
-		int rtHeight = rtWin.getHeight();
-		rtWin.setSize(800,rtHeight);				
+		//TextWindow rtWin = (TextWindow)WindowManager.getWindow("Fit Parameters");
+		//int rtHeight = rtWin.getHeight();
+		//rtWin.setSize(800,rtHeight);				
 	}
 
 	@Override

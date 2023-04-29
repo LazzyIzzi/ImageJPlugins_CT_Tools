@@ -14,7 +14,7 @@ public class Show_CT_Properties implements PlugIn
 	final String[] reconProps = {"Rotation Axis","Axis Shift","Cartesian Filter","Cartesian Cutoff",
 			"Extension Shape","Fix Rings","BeamHardenWeight"}; // Not used "Fix Rays","SumRule"
 	final String[] linearizationProps = {"Linearization","LinearizationA","LinearizationB","LinearizationC",
-			"LinearizationD","LinearizationE","LinearizationF","LinearizationG","LinearizationR"};
+			"LinearizationD","LinearizationE","LinearizationF","LinearizationG","LinearizationR","LinearizationEff"};
 
 	ImagePlus imp;
 	@Override

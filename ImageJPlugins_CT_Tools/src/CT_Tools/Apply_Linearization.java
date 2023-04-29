@@ -32,7 +32,8 @@ public class Apply_Linearization implements PlugIn, DialogListener
 	int numFldCols = numFldDigits + 4;
 	
 	GenericDialog gd;
-	double A,B,C,D,E,F,G,rSqr;
+	double A,B,C,D,E,F,G,rSqr,keV;
+	String[] paramHdr = {"A","B","C","D","E","F","G"};
 	String paramsTableChoice, fitChoice;
 	boolean useScaleFactor,createNewImage;
 	double scaleFactor = 6000;	//default scale factor
@@ -42,7 +43,7 @@ public class Apply_Linearization implements PlugIn, DialogListener
 	ChoiceField sinoCF,resultTableCF, fitCF;
 	CheckboxField createNewCBF,useScaleFactorCBF;
 	NumericField scaleFactorNF;
-	NumericField[]  coefNFs;
+	NumericField[] coefNFs;
 	
 	//*********************************************************************************************
 	private void getSettings()
@@ -96,6 +97,7 @@ public class Apply_Linearization implements PlugIn, DialogListener
 			copyImage.setProp("LinearizationF", coeffArr[5]);				
 			copyImage.setProp("LinearizationG", coeffArr[6]);				
 			copyImage.setProp("LinearizationR", rSqr);				
+			copyImage.setProp("LinearizationEff", keV);				
 
 			copyImage.show();
 			sinoData = copyImage.getStack().getImageArray();
@@ -337,31 +339,17 @@ public class Apply_Linearization implements PlugIn, DialogListener
 	}
 
 	//*********************************************************************************************
-	
-	private Object getSinoData(String imageTitle)
-	{
-		return  WindowManager.getImage(imageTitle).getProcessor().getPixels();
-	}
-	
-	//*********************************************************************************************
-	
-	private Object getSinoData(String imageTitle, int slice)
-	{
-		ImageStack stack = WindowManager.getImage(imageTitle).getStack();
-		if(slice>stack.getSize()) return null;
-		else return  WindowManager.getImage(imageTitle).getStack().getPixels(slice);
-	}
-	
-	//*********************************************************************************************
 
 	private void handleFitChoice()
 	{
 		int row = fitCF.getChoice().getSelectedIndex();
-		for(int i=1;i<fitRT.getLastColumn();i++)
+		//import the table coefficients by row
+		for(int i=0;i<paramHdr.length;i++)
 		{
-			coefNFs[i].setNumber(fitRT.getValue(fitRT.getColumnHeading(i), row));
+			coefNFs[i].setNumber(fitRT.getValue(paramHdr[i], row));
 		}
 		rSqr = fitRT.getValue("R^2", row);
+		keV = fitRT.getValue("Eeff", row);
 	}
 	
 	//*********************************************************************************************
@@ -374,13 +362,15 @@ public class Apply_Linearization implements PlugIn, DialogListener
 			//Users may have deleted Fit Parameters rows
 			//rebuild the fitChoice menu from the "Fit" column 0		
 			fitCF.setChoices(fitRT.getColumnAsStrings(fitRT.getColumnHeading(0)));
+			//Set the default choice to the last row in the table
 			fitCF.getChoice().select(fitRT.getCounter()-1);
-			//import the table values by row
-			for(int i=1;i<fitRT.getLastColumn();i++)
+			//import the table coefficients by row
+			for(int i=0;i<paramHdr.length;i++)
 			{
-				coefNFs[i].setNumber(fitRT.getValue(fitRT.getColumnHeading(i), fitRT.getCounter()-1));
+				coefNFs[i].setNumber(fitRT.getValue(paramHdr[i], fitRT.getCounter()-1));
 			}			
 			rSqr = fitRT.getValue("R^2", fitRT.getCounter()-1);
+			keV = fitRT.getValue("Eeff", fitRT.getCounter()-1);
 		}
 	}
 
@@ -421,12 +411,13 @@ public class Apply_Linearization implements PlugIn, DialogListener
 		gd.addMessage("Select Fit or enter the beam hardening\n"
 				+ "polynomial coefficients.",myFont,Color.BLACK);
 		
-		coefNFs = new NumericField[fitRT.getLastColumn()];
-		for(int i=1;i<fitRT.getLastColumn();i++)
+		coefNFs = new NumericField[paramHdr.length];
+		for(int i=0;i<paramHdr.length;i++)
 		{
-			gd.addNumericField(fitRT.getColumnHeading(i), fitRT.getValue(fitRT.getColumnHeading(i), defaultRowIndex),numFldDigits,numFldCols,null);
+			gd.addNumericField(paramHdr[i], fitRT.getValue(paramHdr[i], defaultRowIndex),numFldDigits,numFldCols,null);
 			coefNFs[i] = gda.getNumericField(gd, null, "coef"+i);
 		}
+
 		rSqr = fitRT.getValue("R^2", defaultRowIndex);
 		
 		gd.addCheckbox("Use_Scale Factor", useScaleFactor);
