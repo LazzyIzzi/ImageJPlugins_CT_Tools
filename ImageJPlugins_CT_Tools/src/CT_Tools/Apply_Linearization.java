@@ -429,7 +429,7 @@ public class Apply_Linearization implements PlugIn, DialogListener
 		createNewCBF = gda.getCheckboxField(gd, "createNew");
 		gd.addMessage("Click OK to apply them\n"
 				+ "to your sinogram",myFont,Color.BLACK);
-		gd.addHelp("https://lazzyizzi.github.io/Linearization.html");
+		gd.addHelp("https://lazzyizzi.github.io/CT_ReconPages/Linearization.html");
 		gd.setBackground(myColor);
 		gd.showDialog();
 		

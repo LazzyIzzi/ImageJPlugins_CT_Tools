@@ -78,7 +78,7 @@ public class Tag_Image_To_MuLin implements PlugInFilter, DialogListener
 			gd.addMessage("Enter an energy between\n1 and 10^9 keV.\nClick \"OK\"",myFont,Color.BLACK);
 			gd.addNumericField("KeV:", keV);
 			keVNF = gda.getNumericField(gd, null, "keV");
-			gd.addHelp("https://lazzyizzi.github.io/TagsToMuLin.html");
+			gd.addHelp("https://lazzyizzi.github.io/CT_ReconPages/TagsToMuLin.html");
 			gd.setBackground(myColor);
 			gd.showDialog();
 

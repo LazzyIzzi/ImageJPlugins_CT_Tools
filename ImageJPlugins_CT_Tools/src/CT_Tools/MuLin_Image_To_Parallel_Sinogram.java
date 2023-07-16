@@ -155,7 +155,7 @@ public class MuLin_Image_To_Parallel_Sinogram implements PlugInFilter, DialogLis
 		scale16CBF = gda.getCheckboxField(gd, "scale16");
 		gd.addNumericField("Scale Factor", scaleFactor);
 
-		gd.addHelp("https://lazzyizzi.github.io/CTsimulator.html");
+		gd.addHelp("https://lazzyizzi.github.io/CT_ReconPages/CTsimulator.html");
 		gd.setBackground(myColor);
 		
 		//the pad option can be awitched after the dialog fields

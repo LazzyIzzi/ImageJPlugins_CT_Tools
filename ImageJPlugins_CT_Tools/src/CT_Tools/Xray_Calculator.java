@@ -145,7 +145,7 @@ import gray.AtomData.*;
 		gd.addButton("Calculate", this);
 		getKevBF=gda.getButtonField(gd, "getKev");
 		gd.addMessage("_____________________________",myFont);
-		gd.addHelp("https://lazzyizzi.github.io/XrayCalculator.html");
+		gd.addHelp("https://lazzyizzi.github.io/CT_ReconPages/XrayCalculator.html");
 		gd.setBackground(myColor);		
 		gd.showDialog();
 		

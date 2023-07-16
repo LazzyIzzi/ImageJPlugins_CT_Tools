@@ -181,7 +181,7 @@ public class MuLin_Image_To_Fan_Sinogram implements PlugInFilter, DialogListener
 		gd.addCheckbox("Scale to 16-bit proj", false);
 		gd.addNumericField("Scale Factor", scaleFactor);
 
-		gd.addHelp("https://lazzyizzi.github.io/CTsimulator.html");	
+		gd.addHelp("https://lazzyizzi.github.io/CT_ReconPages/CTsimulator.html");	
 		gd.setBackground(myColor);
 		
 		if(originalWidth!= originalHeight)

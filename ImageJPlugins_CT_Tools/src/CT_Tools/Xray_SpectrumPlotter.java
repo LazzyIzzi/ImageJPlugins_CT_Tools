@@ -280,7 +280,7 @@ public class Xray_SpectrumPlotter implements PlugIn, ActionListener, DialogListe
 		updateBF = gda.getButtonField(gd, "updateBtn");
 		
 		gd.addMessage("_____________________________",myFont);
-		gd.addHelp("https://lazzyizzi.github.io/XraySpectrumPlotter.html");
+		gd.addHelp("https://lazzyizzi.github.io/CT_ReconPages/XraySpectrumPlotter.html");
 		gd.setBackground(myColor);
 
 		gd.showDialog();

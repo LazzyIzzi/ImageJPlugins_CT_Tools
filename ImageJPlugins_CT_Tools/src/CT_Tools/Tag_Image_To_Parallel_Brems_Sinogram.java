@@ -350,7 +350,7 @@ public class Tag_Image_To_Parallel_Brems_Sinogram implements PlugInFilter , Dial
 		gd.addNumericField("Scale_Factor", scaleFactor);
 		scaleFactorNF = gda.getNumericField(gd, null, "scaleFactor");
 				
-		gd.addHelp("https://lazzyizzi.github.io/CTsimulator.html");
+		gd.addHelp("https://lazzyizzi.github.io/CT_ReconPages/CTsimulator.html");
 		gd.setBackground(myColor);
      	
 		//the pad option can be awitched after the dialog fields

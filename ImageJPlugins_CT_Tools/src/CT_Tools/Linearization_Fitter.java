@@ -151,7 +151,7 @@ public class Linearization_Fitter implements PlugIn , DialogListener ,ActionList
 					+ "Do not close the \"Fit Parameters\" Window.\n"
 					+ "Use the Apply Linearization plugin to select\n"
 					+ "a \"Fit Parameters\" fit to apply to the CT slice's original sinogram",myFont,Color.BLACK);
-			gd.addHelp("https://lazzyizzi.github.io/Linearization.html");
+			gd.addHelp("https://lazzyizzi.github.io/CT_ReconPages/Linearization.html");
 			gd.setBackground(myColor);
 			gd.showDialog();
 

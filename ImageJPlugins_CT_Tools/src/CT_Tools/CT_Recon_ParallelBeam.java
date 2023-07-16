@@ -872,7 +872,7 @@ public class CT_Recon_ParallelBeam implements ActionListener, DialogListener, Im
 
 		gd.setOKLabel("OK(reconstruct all)");
 
-		gd.addHelp("https://lazzyizzi.github.io/CtRecon.html");		
+		gd.addHelp("https://lazzyizzi.github.io/CT_ReconPages/CtRecon.html");		
 
 		gd.showDialog();
 

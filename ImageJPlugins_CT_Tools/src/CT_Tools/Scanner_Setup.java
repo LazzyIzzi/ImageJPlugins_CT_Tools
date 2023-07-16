@@ -351,7 +351,7 @@ public class Scanner_Setup implements PlugIn, DialogListener, ActionListener
 		updateBtnBF = gda.getButtonField(gd, "updateBtn");
 		gd.setAlwaysOnTop(false);
 
-		gd.addHelp("https://lazzyizzi.github.io/CtScannerSetup.html");
+		gd.addHelp("https://lazzyizzi.github.io/CT_ReconPages/CtScannerSetup.html");
 				
 		gd.setBackground(myColor);
 		gd.showDialog();

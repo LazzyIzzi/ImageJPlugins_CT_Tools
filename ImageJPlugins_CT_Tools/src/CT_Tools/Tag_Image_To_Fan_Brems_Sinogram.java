@@ -386,7 +386,7 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 		gd.addNumericField("Scale Factor", scaleFactor);
 
 		//gd.addCheckbox("Pad Image", padImage);
-		gd.addHelp("https://lazzyizzi.github.io/CTsimulator.html");
+		gd.addHelp("https://lazzyizzi.github.io/CT_ReconPages/CTsimulator.html");
 		gd.setBackground(myColor);
 		
 		if(originalWidth!= originalHeight)

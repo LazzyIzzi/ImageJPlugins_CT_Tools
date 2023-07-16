@@ -140,7 +140,7 @@ public class Material_Tagger implements PlugInFilter, DialogListener, ActionList
 			gd.addButton("Add Material to Tag Image", this);
 			addMaterialBF = gda.getButtonField(gd, "addMatlBtn");
 			
-			gd.addHelp("https://lazzyizzi.github.io/MaterialTagger.html");
+			gd.addHelp("https://lazzyizzi.github.io/CT_ReconPages/MaterialTagger.html");
 			gd.setBackground(myColor);
 			gd.showDialog();
 			
