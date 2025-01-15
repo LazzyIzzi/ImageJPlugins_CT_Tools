@@ -51,6 +51,7 @@ public class DebugUtils {
 					k++;
 				}
 			}
+			
 			stk.setSliceLabel("Row", 1);
 			stk.setSliceLabel("Column", 2);
 			stk.setSliceLabel("W0", 3);
