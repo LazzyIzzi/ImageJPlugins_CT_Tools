@@ -7,18 +7,19 @@ import org.jtransforms.fft.FloatFFT_2D;
 /**
  * A set of methods that use Piotr Wendykier's JTransforms Library for Direct Fourier Inversion (DFI) tomographic reconstruction.
  * This class has no ImageJ dependencies. It uses semiBiCubic interpolation and a padFactor of 4 
- * to optimize DFI speed and accuracy.
+ * to optimize DFI speed and accuracy.<br>
+ * Download JTransforms-3.1-with-dependencies.jar to the plugins folder for the forward and inverse FTs<br>
  * @see <a href=
  *      "https://javadoc.io/doc/com.github.wendykierp/JTransforms/latest/index.html">JTransforms</a>
  * @author LazzyIzzi
  */
-public class FFTutils {
+public class DFIutils {
 
-	public class RowColLUT {
+	protected class RowColLUT {
 		float row, col;
 	}
 
-	public class SemiBicubicLUT {
+	protected class SemiBicubicLUT {
 		float row, col;
 		float w0, w1, w2, w3, w4, w5, w6, w7;
 	}
@@ -34,22 +35,23 @@ public class FFTutils {
 		boolean showLUT, showPolarFT, showCartFT;
 	}
 
-	class SemiBicubicWeights {
+	private class SemiBicubicWeights {
 		float w0, w1, w2, w3, w4, w5, w6, w7;
 	}
 
-	static final int COL = 0, ROW = 1;
+	//static final int COL = 0, ROW = 1;
 
 	DebugUtils dbu = new DebugUtils();
+	JTransformsUtils ftu = new JTransformsUtils();
 
 	/**
-	 * Tomographic reconstruction of pre-processed (e.g. padded etc.) x-ray parallel
+	 * Tomographic reconstruction of two same-size pre-processed (e.g. padded etc.) x-ray parallel
 	 * projection data.
 	 * 
 	 * @param dp A DFIparamsSimplified nested class containing the required DFI
 	 *           parameters
 	 * @return Two reconstructed images in JTransforms sequenced format. Use
-	 *         fftRealToFloat and fftImaginaryToFloat to separate the images.
+	 *         JTransformsUtils.fftRealToFloat and fftImaginaryToFloat to separate the images.
 	 */
 	public float[] dfiRecon(DFIparams dp) {
 		float[] jtReIm = dfiRecon(dp.paddedSino1, dp.paddedSino2, dp.paddedSinoWidth, dp.padFactor, dp.semiBicubicLUT,
@@ -68,12 +70,12 @@ public class FFTutils {
 	 * @param interpMethod   Use "BiLinear" or "BiCubic" to obtain the Cartesian
 	 *                       values from the polar data
 	 * @param semiBicubicLut A pre-computed lookup table of Cartesian(x,y) for each
-	 *                       polar(r,theta). Call this class' polarTocartFT_LUT
+	 *                       polar(r,theta). Call DFIutil makeSemiBicubicLUT
 	 *                       method to create the LUT before calling dfiRecon when
 	 *                       reconstructing stacks of sinograms. Pass null to have
 	 *                       dfiRecon create the LUT each time dfiRecon is called.
 	 * @return Two reconstructed images in JTransforms sequenced format. Use
-	 *         fftRealToFloat and fftImaginaryToFloat to separate the images.
+	 *         JTransformsUtils fftRealToFloat and fftImaginaryToFloat to separate the images.
 	 */
 	private float[] dfiRecon(float[] padSino1, float[] padSino2, int padSinoWidth, int padFactor,
 			SemiBicubicLUT[] semiBicubicLut, boolean showLUT, boolean showPolarFT, boolean showCartFT) {
@@ -82,7 +84,6 @@ public class FFTutils {
 		int cartHeight = cartWidth;
 		FloatFFT_1D fftDo = new FloatFFT_1D(padSinoWidth);
 		FloatFFT_2D fft2dDo = new FloatFFT_2D(cartWidth, cartHeight);
-//		ImageJutils iju = new ImageJutils();
 		float[] jtReIm, rowData1, rowData2;
 		// create the rowColLUT if not supplied by user
 		if (semiBicubicLut == null) {
@@ -98,7 +99,7 @@ public class FFTutils {
 		for (int row = 0; row < padSinoHeight; row++) {
 			rowData1 = getRow(padSino1, padSinoWidth, row);
 			rowData2 = getRow(padSino2, padSinoWidth, row);
-			jtReIm = reimToJTransformsComplex(rowData1, rowData2);
+			jtReIm = ftu.reimToJTransformsComplex(rowData1, rowData2);
 
 //			Computes 2D forward DFT of complex data leaving the result in a.
 //			The data is stored in 1D array in row-major order. Complex numbers are stored
@@ -106,16 +107,16 @@ public class FFTutils {
 //			i.e. the input array must be of size rows*2*columns.
 			fftDo.complexForward(jtReIm);
 
-			putRow(fftRealToFloat(jtReIm), padSinoFTre, padSinoWidth, row);
-			putRow(fftImaginaryToFloat(jtReIm), padSinoFTim, padSinoWidth, row);
+			putRow(ftu.getJTransformsReal(jtReIm), padSinoFTre, padSinoWidth, row);
+			putRow(ftu.getJTransformsImaginary(jtReIm), padSinoFTim, padSinoWidth, row);
 		}
 
 		if (showPolarFT == true) {
 			dbu.showDebugImage("PadSinoFTre", (Object) padSinoFTre, padSinoWidth, padSinoHeight);
 			dbu.showDebugImage("PadSinoFTim", (Object) padSinoFTim, padSinoWidth, padSinoHeight);
 		}
-		phaseShiftRows1D(padSinoFTre, padSinoWidth);
-		phaseShiftRows1D(padSinoFTim, padSinoWidth);
+		ftu.phaseShiftRows1D(padSinoFTre, padSinoWidth);
+		ftu.phaseShiftRows1D(padSinoFTim, padSinoWidth);
 
 		float[] cartReData = polarToCartesianSemiBicubic(padSinoFTre, padSinoWidth, padFactor, semiBicubicLut);
 		float[] cartImData = polarToCartesianSemiBicubic(padSinoFTim, padSinoWidth, padFactor, semiBicubicLut);
@@ -124,11 +125,13 @@ public class FFTutils {
 			dbu.showDebugImage("cartImData", (Object) cartImData, cartWidth, cartHeight);
 		}
 		// Phase Shift
-		phaseShift2D(cartReData, cartWidth);
-		phaseShift2D(cartImData, cartWidth);
+//		ftu.phaseShift2D(cartReData, cartWidth);
+//		ftu.phaseShift2D(cartImData, cartWidth);
+		ftu.phaseShift(cartReData, cartWidth,cartHeight,1);
+		ftu.phaseShift(cartImData, cartWidth,cartHeight,1);
 
 		// Inverse Transform
-		jtReIm = reimToJTransformsComplex(cartReData, cartImData);
+		jtReIm = ftu.reimToJTransformsComplex(cartReData, cartImData);
 
 		fft2dDo.complexInverse(jtReIm, true);
 
@@ -136,32 +139,6 @@ public class FFTutils {
 
 	}
 
-	/**
-	 * Extracts the imaginary part of JTransform sequenced data
-	 * 
-	 * @param fft the sequenced data
-	 * @return the real part as a float array
-	 */
-	public float[] fftImaginaryToFloat(float[] fft) {
-		float[] imaginary = new float[fft.length / 2];
-		for (int i = 0; i < fft.length / 2; i++)
-			imaginary[i] = fft[2 * i + 1];
-		return imaginary;
-	}
-
-	/**
-	 * Extracts the real part of JTransform sequenced data
-	 * 
-	 * @param fft the sequenced data
-	 * @return the real part as a float array
-	 */
-	public float[] fftRealToFloat(float[] fft) {
-		float[] real = new float[fft.length / 2];
-		for (int i = 0; i < fft.length / 2; i++)
-			real[i] = fft[2 * i];
-		return real;
-	}
-	
 	/**
 	 * @return The text of the JTransforms License
 	 */
@@ -199,34 +176,7 @@ public class FFTutils {
 				+ "SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.";
 		return dfiTxt + txt;
 	}
-
-
-	/**
-	 * @return The text of the JTransforms License
-	 */
-	public String getJTransformsLicenseOld() {
-		String txt = "DFI Recon uses JTransforms FFT library\r\n\r\n" + "JTransforms\r\n"
-				+ "Copyright (c) 2007 onward, Piotr Wendykier\r\n" + "All rights reserved.\r\n" + "\r\n"
-				+ "Redistribution and use in source and binary forms, with or without\r\n"
-				+ "modification, are permitted provided that the following conditions are met:\r\n" + "\r\n"
-				+ "1. Redistributions of source code must retain the above copyright notice, this\r\n"
-				+ "   list of conditions and the following disclaimer. \r\n"
-				+ "2. Redistributions in binary form must reproduce the above copyright notice,\r\n"
-				+ "   this list of conditions and the following disclaimer in the documentation\r\n"
-				+ "   and/or other materials provided with the distribution.\r\n" + "\r\n"
-				+ "THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\" AND\r\n"
-				+ "ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED\r\n"
-				+ "WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE\r\n"
-				+ "DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR\r\n"
-				+ "ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES\r\n"
-				+ "(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;\r\n"
-				+ "LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND\r\n"
-				+ "ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\r\n"
-				+ "(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS\r\n"
-				+ "SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.";
-		return txt;
-	}
-
+	
 	/**
 	 * SemiBicubic Lookup table maker
 	 * 
@@ -238,7 +188,7 @@ public class FFTutils {
 	 *         coordinates, and the semiBicubic interpolation weights for each polar
 	 *         pixel
 	 */
-	public SemiBicubicLUT[] makeSemiBicubicLUT(int polarWidth, int polarHeight, int padFactor) {
+	protected SemiBicubicLUT[] makeSemiBicubicLUT(int polarWidth, int polarHeight, int padFactor) {
 		RowColLUT[] rowColLUT = makeRowColLUT(polarWidth, polarHeight, padFactor);
 		SemiBicubicWeights[] SemiBicubicWeights = makeSemiBicubicWeightsLUT(rowColLUT);
 		SemiBicubicLUT[] SemiBicubicLUT = new SemiBicubicLUT[rowColLUT.length];
@@ -259,21 +209,6 @@ public class FFTutils {
 		return SemiBicubicLUT;
 	}
 
-	/**
-	 * Convert separate real and imaginary arrays to JTranforms sequenced array.
-	 * 
-	 * @param real      The real data in a 1D array
-	 * @param imaginary The imaginary data in a 1D array
-	 * @return A sequenced array in JTransforms format
-	 */
-	public float[] reimToJTransformsComplex(float[] real, float[] imaginary) {
-		float[] fft = new float[real.length * 2];
-		for (int i = 0; i < real.length; i++) {
-			fft[2 * i] = real[i];
-			fft[2 * i + 1] = imaginary[i];
-		}
-		return fft;
-	}
 
 	private float[] getRow(float[] data2D, int dataWidth, int row) {
 		float[] rowData = new float[dataWidth];
@@ -414,47 +349,6 @@ public class FFTutils {
 			sbc[i].w7 = w1 * D;
 		}
 		return sbc;
-	}
-
-	/**
-	 * Applies as 2D phase shift to a 2D image
-	 * 
-	 * @param data  the 2D data to phase shift
-	 * @param width the number of columns in the 2D data
-	 */
-	private void phaseShift2D(float[] data, int width) {
-		int height;
-		int i, j;
-
-		height = data.length / width;
-		for (j = 0; j < height; j += 2) {
-			for (i = 1; i < width; i += 2) {
-				data[i + j * width] *= -1;
-			}
-		}
-		for (j = 1; j < height; j += 2) {
-			for (i = 0; i < width; i += 2) {
-				data[i + j * width] *= -1;
-			}
-		}
-	}
-
-	/**
-	 * Applies as 1D phase shift to each row of a 2D image
-	 * 
-	 * @param data  the 2D data to phase shift
-	 * @param width the number of columns in the 2D data
-	 */
-	private void phaseShiftRows1D(float[] data, int width) {
-		int height;
-		int i, j;
-
-		height = data.length / width;
-		for (j = 0; j < height; j++) {
-			for (i = 1; i < width; i += 2) {
-				data[i + j * width] *= -1;
-			}
-		}
 	}
 
 	/**

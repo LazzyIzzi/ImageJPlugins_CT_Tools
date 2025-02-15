@@ -1,12 +1,15 @@
 package CT_Tools;
 
-import CT_Tools.FFTutils.RowColLUT;
-import CT_Tools.FFTutils.SemiBicubicLUT;
+import CT_Tools.DFIutils.*;
 import ij.IJ;
 import ij.ImagePlus;
 import ij.ImageStack;
 import ij.process.ImageProcessor;
 
+/**ImageJ based methods to display the DFI plugin's intermediate images 
+ * @author LazzyIzzi
+ *
+ */
 public class DebugUtils {
 
 	public void showDebugImage(String title,Object image, int width, int height) {
@@ -51,7 +54,6 @@ public class DebugUtils {
 					k++;
 				}
 			}
-			
 			stk.setSliceLabel("Row", 1);
 			stk.setSliceLabel("Column", 2);
 			stk.setSliceLabel("W0", 3);

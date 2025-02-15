@@ -11,35 +11,35 @@ import ij.IJ;
 import ij.ImagePlus;
 import ij.ImageStack;
 import ij.WindowManager;
+import ij.gui.GUI;
+//import ij.gui.GUI;
 import ij.gui.GenericDialog;
 import ij.gui.NewImage;
 import ij.gui.OvalRoi;
 import ij.plugin.ContrastEnhancer;
+//import ij.plugin.Duplicator;
 import ij.plugin.filter.PlugInFilter;
+//import ij.plugin.frame.Recorder;
 import ij.process.ImageProcessor;
+import ij.ImageListener;
+
 import jhd.ImageJAddins.GenericDialogAddin;
 import jhd.ImageJAddins.GenericDialogAddin.*;
 
 /**
  * DFI_Jtransforms reconstructs tomographic slices from sinograms and sinogram
  * stacks.<br>
- * Dependencies: SinogramUtils to adjust the sinograms, FFTutils to convert data to
- * and from JTransforms sequenced format, and JTransforms-3.1-with-dependencies.jar for the FFTs <br>
- * Download JTransforms-3.1-with-dependencies.jar to the plugins folder for the forward and inverse FTs<br>
+ * It uses SinogramUtils to adjust the sinograms and FFTutils to convert data to
+ * and from JTransforms sequenced format and run the DFI algorithm: <br>
+ * ImageJ methods are used to display the results.
  * 
  * @author LazzyIzzi
- * @see <a href=
- *      "https://javadoc.io/doc/com.github.wendykierp/JTransforms/latest/index.html">JTransforms</a>
  * @see SinogramUtils
  * @see JTransformsUtils
  *
  */
-public class DFI_JTransforms implements ActionListener, PlugInFilter {
-	GenericDialog gd = new GenericDialog("DFI Sinogram Reconstruction");
-	DFIutils dfiu = new DFIutils(); // does the reconstruction
-	JTransformsUtils jtu = new JTransformsUtils(); //Converts data to-from JTransforms sequenced format
-	SinogramUtils su = new SinogramUtils();// Uses ImageJ methods to prepare the sinograms for reconstruction.
-	
+public class DFI_JTransformsFancyUI implements ActionListener, PlugInFilter, ImageListener {
+
 	class DialogParams {
 		int padFactor, interpMethod, extensionWidth;
 		String interpChoice, padChoice;
@@ -55,62 +55,81 @@ public class DFI_JTransforms implements ActionListener, PlugInFilter {
 	final Color myColor = new Color(240, 230, 190);// slightly darker than buff
 	Font myFont = new Font(Font.DIALOG, Font.BOLD, 12);
 
-	ImagePlus sinoImp;
-
 	@Override
 	public int setup(String arg, ImagePlus imp) {
-		this.sinoImp = imp;
 		return DOES_32;
 	}
 
 	@Override
 	public void run(ImageProcessor ip) {
-		if(!jtu.JtransformsJarPresent()) {
-			IJ.error(jtu.getJtransformsJarErrorMsg());
-			return;
-		}
-		
+		ImagePlus.addImageListener(this);
+
 		DialogParams dlp = DoDFIdialog();
 
 		if (dlp != null) {
-			// Close the test image if present
-			ImagePlus testImp = WindowManager.getImage("TestSlice");
-			if (testImp != null) {
-				testImp.close();
+			// Close the test image
+//			ImagePlus testImp = WindowManager.getImage("TestSlice");
+//			if(testImp!=null) {
+//				testImp.close();
+//			}
+			if (dlp.sinoImp == null) {
+				return;
+			} else {
+				ImagePlus reconImp = DoDFIrecon(dlp);
+				reconImp.show();
+				if (dlp.showReconROI == true) {
+					int sinoW = dlp.sinoImp.getWidth();
+					int x = (reconImp.getWidth() - sinoW) / 2;
+					int y = (reconImp.getHeight() - sinoW) / 2;
+					reconImp.setRoi(new OvalRoi(x, y, sinoW, sinoW));
+				}
+				ContrastEnhancer ce = new ContrastEnhancer();
+				ce.stretchHistogram(reconImp, 0.35);
 			}
-
-			ImagePlus reconImp = DoDFIrecon(dlp);
-			reconImp.show();
-			if (dlp.showReconROI == true) {
-				int sinoW = dlp.sinoImp.getWidth();
-				int x = (reconImp.getWidth() - sinoW) / 2;
-				int y = (reconImp.getHeight() - sinoW) / 2;
-				reconImp.setRoi(new OvalRoi(x, y, sinoW, sinoW));
-			}
-			ContrastEnhancer ce = new ContrastEnhancer();
-			ce.stretchHistogram(reconImp, 0.35);
 		} else {
 			return;
 		}
 	}
 
+	GenericDialog gd = GUI.newNonBlockingDialog("Direct Fourier Reconstruction");
+	// GenericDialog gd = new GenericDialog("DFI Debug 2");
+	JTransformsUtils ftu = new JTransformsUtils();
+	DFIutils dfiu = new DFIutils();
+	SinogramUtils su = new SinogramUtils();
+//	DebugUtils dbu = new DebugUtils();
+
 	private DialogParams DoDFIdialog() {
+		int winNum;
+
 		GenericDialogAddin gda = new GenericDialogAddin();
-		String msg = "Reconstructs 32-bit parallel-projection 0-180deg sinograms to 2D images."
-				+ "\r\nSinogram columns=pixel position, rows=rotation angle with axis at center column."
-				+ "\r\nLocal reconstruction uses a linear profile extensions"
-				+ "\r\nBeam-hardening applies a second-order polynomial correction";
+		String[] winTitles = WindowManager.getImageTitles();
+		winTitles = filterImageTitles(winTitles);
+		String curTitle = WindowManager.getCurrentImage().getTitle();
+		for (winNum = 0; winNum < winTitles.length; winNum++) {
+			if (winTitles[winNum].equals(curTitle))
+				break;
+		}
+		String msg = "Reconstructs 32-bit parallel-projection 0-180deg sinograms to 2D images." +
+				"\r\nSinogram columns=pixel position, rows=rotation angle with axis at center column." +
+				"\r\nLocal reconstruction uses a linear profile extensions" +
+				"\r\nBeam-hardening applies a second-order polynomial correction";
 		gd.addMessage(msg, myFont);
+		gd.addChoice("Sinogram Window:", winTitles, winTitles[winNum]);
+		sinoCF = gda.getChoiceField(gd, null, "sinogram");
 		gd.addSlider("Beam_Hardening:", 0, 1, 0, .01);
 		gd.addSlider("Extension Width:", 0, 100, 0, 0);
 		gd.addSlider("Axis Shift:", -5, 5, 0, .1);
 		gd.addCheckbox("Show_run_time", false);
+//		gd.addCheckbox("Debug Lookup Table", false);
+//		gd.addCheckbox("Debug Padded Sino FTs", false);
+//		gd.addCheckbox("Debug Cartesian FT", false);
 		gd.addCheckbox("Show_ROI", true);
 		gd.addButton("Reconstruct Test Slice", this);
 		reconSliceBF = gda.getButtonField(gd, "reconSliceBtn");
 		gd.setBackground(myColor);
-		gd.addHelp("https://lazzyizzi.github.io/index.html");
+
 		gd.showDialog();
+		
 
 		if (gd.wasCanceled()) {
 			ImagePlus testImp = WindowManager.getImage("TestSlice");
@@ -132,11 +151,14 @@ public class DFI_JTransforms implements ActionListener, PlugInFilter {
 			dlp.extensionWidth = (int) gd.getNextNumber();
 			dlp.axisShift = (float) gd.getNextNumber();
 			dlp.showTime = gd.getNextBoolean();
+//			dlp.showLUT = gd.getNextBoolean();
+//			dlp.showPolarFT = gd.getNextBoolean();
+//			dlp.showCartFT = gd.getNextBoolean();
 			dlp.showLUT = false;
 			dlp.showPolarFT = false;
 			dlp.showCartFT = false;
 			dlp.showReconROI = gd.getNextBoolean();
-			dlp.sinoImp = sinoImp;
+			dlp.sinoImp = WindowManager.getImage(gd.getNextChoice());
 			dlp.padFactor = 4;
 		} catch (Exception e) {
 			IJ.showMessage("Error",
@@ -189,18 +211,19 @@ public class DFI_JTransforms implements ActionListener, PlugInFilter {
 		// Create the polar To Cartesian Lookup table
 		// If dfp.semiBicubicLUT = null, DFIrecon will build the LUT each time it is
 		// called
-		DFIparams dfiParams = dfiu.new DFIparams();
-		dfiParams.paddedSinoWidth = paddedImp.getWidth();
-		dfiParams.semiBicubicLUT = dfiu.makeSemiBicubicLUT(dfiParams.paddedSinoWidth, paddedImp.getHeight(), dlp.padFactor);
+		DFIparams dfp = dfiu.new DFIparams();
+		dfp.paddedSinoWidth = paddedImp.getWidth();
+		dfp.semiBicubicLUT = dfiu.makeSemiBicubicLUT(dfp.paddedSinoWidth, paddedImp.getHeight(), dlp.padFactor);
 
 		// Pass the debug options
-		dfiParams.showLUT = dlp.showLUT;
-		dfiParams.showPolarFT = dlp.showPolarFT;
-		dfiParams.showCartFT = dlp.showCartFT;
+		dfp.showLUT = dlp.showLUT;
+		dfp.showPolarFT = dlp.showPolarFT;
+		dfp.showCartFT = dlp.showCartFT;
 
 		// Create an image to hold the reconstructed images
+		// ImagePlus reconImp = IJ.createImage("Recon", sinoCols, sinoCols,
+		// sinoSliceCnt, 32);
 		ImagePlus reconImp = NewImage.createFloatImage("Recon", sinoCols, sinoCols, sinoSliceCnt, NewImage.FILL_BLACK);
-		ImageStack reconStk = reconImp.getStack();
 
 		long start = System.nanoTime();
 		// reconstruct the sinogram stack two slices at a time
@@ -210,14 +233,14 @@ public class DFI_JTransforms implements ActionListener, PlugInFilter {
 
 			// Fetch pairs of sinograms from the padded image
 			paddedImp.setSlice(slice);
-			dfiParams.paddedSino1 = (float[]) paddedImp.getProcessor().getPixels();
+			dfp.paddedSino1 = (float[]) paddedImp.getProcessor().getPixels();
 			paddedImp.setSlice(slice + 1);
-			dfiParams.paddedSino2 = (float[]) paddedImp.getProcessor().getPixels();
-			dfiParams.padFactor = dlp.padFactor;
+			dfp.paddedSino2 = (float[]) paddedImp.getProcessor().getPixels();
+			dfp.padFactor = dlp.padFactor;
 
 			// dfiRecon returns both slices in JTransforms sequence format
 			// because it can't return two separate arrays
-			dfiData = dfiu.dfiRecon(dfiParams);
+			dfiData = dfiu.dfiRecon(dfp);
 
 			// Convert 1/pixel to 1/cm
 			for (int i = 0; i < dfiData.length; i++) {
@@ -225,14 +248,15 @@ public class DFI_JTransforms implements ActionListener, PlugInFilter {
 			}
 
 			// put the separated images into the reconstructed image stack slices
-			reconStk.setPixels(jtu.getJTransformsReal(dfiData), slice);
-			reconStk.setPixels(jtu.getJTransformsImaginary(dfiData), slice + 1);
+			ImageStack reconStk = reconImp.getStack();
+			reconStk.setPixels(ftu.getJTransformsReal(dfiData), slice);
+			reconStk.setPixels(ftu.getJTransformsImaginary(dfiData), slice + 1);
 		}
 
 		if (sliceAdded == true) {
 			// deleteLastSlice fails when there are 2 slices in the stack
-			reconStk.deleteLastSlice();
-			// Below is the workaround for a bug in deleteLastSlice which should do what it
+			reconImp.getStack().deleteLastSlice();
+			// Below is a workaround for a bug in deleteLastSlice which should do what it
 			// says without further intervention
 			reconImp.setStack(reconImp.getStack());
 		}
@@ -323,6 +347,10 @@ public class DFI_JTransforms implements ActionListener, PlugInFilter {
 				switch (name) {
 				case "reconSliceBtn":
 					DialogParams dlp = getSelections(gd);
+					if(dlp.sinoImp == null) {
+						IJ.error("Please select a sinogram to reconstruct.");
+						return;
+					}
 					dlp.sinoImp = dlp.sinoImp.crop("whole-slice");
 					ImagePlus reconImp = DoDFIrecon(dlp);
 					ImagePlus testImp;
@@ -334,7 +362,6 @@ public class DFI_JTransforms implements ActionListener, PlugInFilter {
 					}
 					testImp.setStack(reconImp.getStack());
 					testImp.show();
-					WindowManager.setTempCurrentImage(testImp);
 					// put the result next to the dialog box
 					int dlogW = gd.getSize().width;
 					int dlogL = gd.getLocation().x;
@@ -345,14 +372,85 @@ public class DFI_JTransforms implements ActionListener, PlugInFilter {
 						int sinoW = dlp.sinoImp.getWidth();
 						int x = (testImp.getWidth() - sinoW) / 2;
 						int y = (testImp.getHeight() - sinoW) / 2;
-						testImp.setRoi(new OvalRoi(x, y, sinoW, sinoW));
+						testImp.setRoi(new OvalRoi(x, y, sinoW, sinoW),true);
+						testImp.updateAndDraw();
 					}
 					ContrastEnhancer ce = new ContrastEnhancer();
 					ce.stretchHistogram(testImp, 0.35);
-
 					break;
 				}
 			}
 		}
+	}
+	
+	private String[] filterImageTitles(String[] imageTitles) {
+		ArrayList<String> okNames = new ArrayList<String>();
+		boolean nameOK;
+		// Don't load recon slices or TestSlices
+		// run.pluginFilter returns DOES_32 so at least one 32-bit image is initially present 
+		String[] badNames = {"TestSlice","Recon"}; //,".png",".bmp",".gif",".pgm"};
+		for(int i =0;i<imageTitles.length;i++) {
+			nameOK = true;
+			for(int j=0;j<badNames.length;j++) {
+				if(imageTitles[i].contains(badNames[j])) {
+					nameOK = false;
+					continue;
+				}
+			}
+			if(nameOK) {
+				ImagePlus imp = WindowManager.getImage(imageTitles[i]);
+				if(imp.getBitDepth() == 32) {
+					okNames.add(imageTitles[i]);
+				}
+			}			
+		}		
+		String[] filteredTitles = new String[okNames.size()];		
+		okNames.toArray(filteredTitles);
+		return filteredTitles;
+	}
+
+	private void rebuildList(String[] titles) {
+		if (IJ.isMacro()) {
+			return;
+		} else {
+			Choice sinoChoice = sinoCF.getChoice();
+			String curSinoTitle = sinoChoice.getSelectedItem();
+			sinoChoice.removeAll();
+			if (titles.length > 0) {
+				// rebuild the list with the current selection on top
+				if (curSinoTitle != null)
+					sinoChoice.add(curSinoTitle);
+				for (int i = 0; i < titles.length; i++) {
+					if (!titles[i].equals(curSinoTitle)) {
+						sinoChoice.add(titles[i]);
+					}
+				}
+				sinoChoice.select(curSinoTitle);
+			}
+			sinoChoice.setBounds(sinoChoice.getX(),sinoChoice.getY(),350,sinoChoice.getHeight());
+
+		}
+
+		
+
+	}
+
+	@Override
+	public void imageOpened(ImagePlus imp) {
+		String[] titles = filterImageTitles(WindowManager.getImageTitles());
+		//if(titles!=null)	
+			rebuildList(titles);
+	}
+
+	@Override
+	public void imageClosed(ImagePlus imp) {
+		String[] titles = filterImageTitles(WindowManager.getImageTitles());
+		//if(titles!=null)	
+			rebuildList(titles);
+	}
+	@Override
+	public void imageUpdated(ImagePlus imp) {
+		// IJ.log(imp.getTitle() + " Updated");
+
 	}
 }
