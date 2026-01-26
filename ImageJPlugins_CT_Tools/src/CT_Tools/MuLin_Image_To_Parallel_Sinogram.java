@@ -158,7 +158,7 @@ public class MuLin_Image_To_Parallel_Sinogram implements PlugInFilter, DialogLis
 		gd.addHelp("https://lazzyizzi.github.io/CT_ReconPages/CTsimulator.html");
 		gd.setBackground(myColor);
 		
-		//the pad option can be awitched after the dialog fields
+		//the pad option can be switched after the dialog fields
 		//have been set up;
 		if(originalWidth!= originalHeight)
 		{
@@ -283,7 +283,12 @@ public class MuLin_Image_To_Parallel_Sinogram implements PlugInFilter, DialogLis
 	{
 		boolean dialogOK = true;
 		detPixCnt = (int) detPixCntNF.getNumber();
-		if(detPixCnt > originalWidth)
+		//make Detector pixel count an even number
+		if(detPixCnt % 2 !=  0) {
+			detPixCnt+=1;
+			detPixCntNF.setNumber(detPixCnt);
+		}
+		if(detPixCnt >= originalWidth)
 		{
 			int numAngles = (int) (Math.ceil(Math.PI*detPixCnt/2));
 			//make numAngles even
@@ -315,12 +320,7 @@ public class MuLin_Image_To_Parallel_Sinogram implements PlugInFilter, DialogLis
 		case "Next Power of 2":
 			int size = originalWidth;
 			if(originalHeight>size) size = originalHeight;
-			detPixCnt = 0;
-			for(int i=0;i< 10;i++)
-			{
-				detPixCnt =(int) Math.pow(2, i);
-				if(detPixCnt>size) break;
-			}				
+			detPixCnt  =findNextPowerOfTwo(detPixCnt);			
 			detPixCntNF.setNumber(detPixCnt);
 			numAngles = (int) (Math.ceil(Math.PI*detPixCnt/2));
 			break;
@@ -330,6 +330,26 @@ public class MuLin_Image_To_Parallel_Sinogram implements PlugInFilter, DialogLis
 		if ((numAngles ^ 1) == numAngles - 1)	numAngles++;	
 		numAnglesNF.setNumber(numAngles);
 	}
+	
+    private  int findNextPowerOfTwo(int n) {
+        if (n <= 0) {
+            return 1; // Return 1 for non-positive numbers
+        }
+        
+        // Decrement n by 1 to handle the case when n is already a power of 2
+       // n--;
+        
+        // Set all bits to the right of the highest set bit
+        n |= n >> 1;
+        n |= n >> 2;
+        n |= n >> 4;
+        n |= n >> 8;
+        n |= n >> 16; // For 32-bit integers
+        
+        // Return the next power of 2
+        return n + 1;
+    }
+
 
 	//*******************************************************************************
 

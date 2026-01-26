@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.Properties;
 
-import CT_Tools.DFIutils.DFIparams;
 import ij.IJ;
 import ij.ImagePlus;
 import ij.ImageStack;
@@ -89,6 +88,7 @@ public class DFI_JTransforms implements ActionListener, PlugInFilter {
 			}
 			ContrastEnhancer ce = new ContrastEnhancer();
 			ce.stretchHistogram(reconImp, 0.35);
+			reconImp.updateAndDraw();
 		} else {
 			return;
 		}
@@ -109,7 +109,7 @@ public class DFI_JTransforms implements ActionListener, PlugInFilter {
 		gd.addButton("Reconstruct Test Slice", this);
 		reconSliceBF = gda.getButtonField(gd, "reconSliceBtn");
 		gd.setBackground(myColor);
-		gd.addHelp("https://lazzyizzi.github.io/index.html");
+		gd.addHelp("https://lazzyizzi.github.io/CT_ReconPages/DFI_Recon.html");
 		gd.showDialog();
 
 		if (gd.wasCanceled()) {
@@ -189,7 +189,7 @@ public class DFI_JTransforms implements ActionListener, PlugInFilter {
 		// Create the polar To Cartesian Lookup table
 		// If dfp.semiBicubicLUT = null, DFIrecon will build the LUT each time it is
 		// called
-		DFIparams dfiParams = dfiu.new DFIparams();
+		CT_Tools.DFIutils.DFIparams dfiParams = dfiu.new DFIparams();
 		dfiParams.paddedSinoWidth = paddedImp.getWidth();
 		dfiParams.semiBicubicLUT = dfiu.makeSemiBicubicLUT(dfiParams.paddedSinoWidth, paddedImp.getHeight(), dlp.padFactor);
 
@@ -247,6 +247,9 @@ public class DFI_JTransforms implements ActionListener, PlugInFilter {
 		if (title.endsWith(".tif")) {
 			title = title.replace(".tif", "_Recon.tif");
 		}
+		else {
+			title = title + "_Recon";
+		}
 		reconImp.setTitle(title);
 
 		if (dlp.showTime) {
@@ -284,6 +287,8 @@ public class DFI_JTransforms implements ActionListener, PlugInFilter {
 				destProps.add((String) srcElem.nextElement());
 			}
 		}
+		destProps.add("Sinogram");
+		destProps.add(srcImp.getTitle());
 		destProps.add("Reconstructor");
 		destProps.add("DFI_Recon_Simplified");
 		destProps.add("Pad Factor");

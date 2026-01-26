@@ -2,20 +2,14 @@ package CT_Tools;
 
 import java.awt.*;
 import java.util.ArrayList;
-import java.util.Enumeration;
-import java.util.Properties;
-import java.util.Vector;
 
 import ij.IJ;
 import ij.ImagePlus;
-import ij.ImageStack;
 import ij.WindowManager;
 import ij.gui.GenericDialog;
 import ij.gui.DialogListener;
 import ij.measure.ResultsTable;
 import ij.plugin.PlugIn;
-//import ij.plugin.filter.PlugInFilter;
-import ij.process.ImageProcessor;
 import jhd.ImageJAddins.GenericDialogAddin;
 import jhd.ImageJAddins.GenericDialogAddin.*;
 

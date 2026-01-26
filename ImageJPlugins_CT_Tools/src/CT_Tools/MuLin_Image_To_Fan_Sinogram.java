@@ -275,7 +275,7 @@ public class MuLin_Image_To_Fan_Sinogram implements PlugInFilter, DialogListener
 
 		String[] props = new String[8];
 		props[0]="Geometry"; 
-		props[1]="Parallel";
+		props[1]="Fan Beam";
 		props[2]="Source";
 		props[3]="Tau Values";			
 		props[4]="Source To Detector";

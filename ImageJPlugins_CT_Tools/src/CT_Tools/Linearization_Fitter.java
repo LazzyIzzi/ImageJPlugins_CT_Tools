@@ -18,7 +18,9 @@ import jhd.ImageJAddins.GenericDialogAddin;
 import jhd.ImageJAddins.GenericDialogAddin.*;
 //import jhd.MuMassCalculator.*;
 import jhd.Projection.*;
-import jhd.TagTools.*;
+
+import tagTools.*;
+//import tagTools.TagListImageTools.*;
 
 /* 	Estimate "polynomial linearization" beam hardening coefficients from an uncorrected reconstructed slice.
  * Requires the reconstructed beam-hardened CT slice and a user-supplied tagged model image.
@@ -60,8 +62,10 @@ public class Linearization_Fitter implements PlugIn , DialogListener ,ActionList
 	final Color errColor = new Color(255,100,0);
 	final Color white = new Color(255,255,255);
 	
-	MatlListTools.TagSet myTagSet;	
-	MatlListTools mlt = new MatlListTools();
+	TagListTools.TagSet myTagSet;	
+	TagListTools tagListTools = new TagListTools();
+	TagListImageTools tagListImageTools = new TagListImageTools();
+	
 	String[] matlNames;
 
 	int		matlIndex;	// the position of the material in the list
@@ -97,12 +101,12 @@ public class Linearization_Fitter implements PlugIn , DialogListener ,ActionList
 	{
 		String dir = IJ.getDirectory("plugins");
 		String path = dir + "DialogData\\DefaultMaterials.csv";
-		myTagSet = mlt.loadTagFile(path);
+		myTagSet = tagListTools.readTagSetFile(path);
 		
 		//Get names array from TagSet
 		matlNames = new String[myTagSet.tagData.size()];
 		int i=0;
-		for(MatlListTools.TagData td : myTagSet.tagData)
+		for(TagListTools.TagData td : myTagSet.tagData)
 		{
 			matlNames[i]= td.matlName;
 			i++;
@@ -252,7 +256,7 @@ public class Linearization_Fitter implements PlugIn , DialogListener ,ActionList
 		ImagePlus tagImp = modelImp.duplicate();
 		//Convert tags to muLin
 		float[] tagImg = (float[])tagImp.getProcessor().getPixels();		
-		mlt.tagsToLinearAttn(tagImg, myTagSet, keV);
+		tagListImageTools.tagsToLinearAttn(tagImg, myTagSet, keV);
 		
 		//Multiply the tagImg by the porosity
 		float[] phiImg = (float[])phiImp.getProcessor().getPixels();

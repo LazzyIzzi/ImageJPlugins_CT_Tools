@@ -28,16 +28,16 @@ import ij.measure.*;
 import jhd.ImageJAddins.GenericDialogAddin;
 import jhd.ImageJAddins.GenericDialogAddin.*;
 import jhd.MuMassCalculator.*;
-import jhd.TagTools.*;
-
+import tagTools.*;
+import tagTools.TagListTools.*;
 
 public class Xray_Lookup_MuLin implements PlugIn, ActionListener, DialogListener, KeyListener
 {
 
 	//class used to hold the dialog settings. 
 	MuMassCalculator mmc= new MuMassCalculator();
-	MatlListTools mlt=new MatlListTools();
-	MatlListTools.TagSet tagSet;
+	TagListTools mlt=new TagListTools();
+	TagSet tagSet;
 	String[] matlName,filteredMatlName;
 	String[] matlFormula,filteredMatlFormula;	
 	double[] matlGmPerCC,filteredMatlGmPerCC;
@@ -283,7 +283,7 @@ public class Xray_Lookup_MuLin implements PlugIn, ActionListener, DialogListener
 		{
 			char c = e.getKeyChar();
 			String s = Character.toString(c);		
-			MatlListTools.TagSet filteredTagSet = mlt.filterTagData(tagSet, s);
+			TagSet filteredTagSet = mlt.filterTagData(tagSet, s);
 			filteredMatlName= mlt.getTagSetMatlNamesAsArray(filteredTagSet);
 			filteredMatlFormula=mlt.getTagSetMatlFormulasAsArray(filteredTagSet);
 			filteredMatlGmPerCC=mlt.getTagSetMatlGmPerccAsArray(filteredTagSet);
@@ -362,13 +362,13 @@ public class Xray_Lookup_MuLin implements PlugIn, ActionListener, DialogListener
 		String dir = IJ.getDirectory("plugins");
 		String defaultFilePath = dir + "DialogData\\DefaultMaterials.csv";
 		
-		tagSet = mlt.loadTagFile(defaultFilePath);
+		tagSet = mlt.readTagSetFile(defaultFilePath);
 		//Get names array from TagSet
 		matlName = new String[tagSet.tagData.size()];
 		matlFormula = new String[tagSet.tagData.size()];
 		matlGmPerCC = new double[tagSet.tagData.size()];
 		int i=0;
-		for(MatlListTools.TagData td : tagSet.tagData)
+		for(TagData td : tagSet.tagData)
 		{
 			matlName[i]= td.matlName;
 			matlFormula[i] = td.matlFormula;

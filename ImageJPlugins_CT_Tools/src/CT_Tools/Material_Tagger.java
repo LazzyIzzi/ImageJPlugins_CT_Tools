@@ -10,12 +10,10 @@ import ij.process.ImageProcessor;
 import ij.process.ImageStatistics;
 import jhd.ImageJAddins.GenericDialogAddin;
 import jhd.ImageJAddins.GenericDialogAddin.*;
-import jhd.TagTools.MatlListTools;
-import jhd.TagTools.MatlListTools.*;
-
 import java.awt.event.*;
-import java.util.ArrayList;
 import java.awt.*;
+import tagTools.*;
+import tagTools.TagListTools.TagSet;
 
 
 /**A tool for creating "tagged" images. Uses a Materials List JFrame viewer to show tags.
@@ -27,7 +25,7 @@ import java.awt.*;
 
 public class Material_Tagger implements PlugInFilter, DialogListener, ActionListener
 {
-	MatlListTools mlt = new MatlListTools();
+	TagListTools mlt = new TagListTools();
 	TagSet tagSet;
 	
 	String[] matlNames;
@@ -86,7 +84,7 @@ public class Material_Tagger implements PlugInFilter, DialogListener, ActionList
 		//Location of the default materials list
 		String dir = IJ.getDirectory("plugins");
 		String path = dir + "DialogData\\DefaultMaterials.csv";
-		tagSet = mlt.loadTagFile(path);
+		tagSet = mlt.readTagSetFile(path);
 		if(tagSet==null)
 		{
 			IJ.error("The Materials tagSet failed to load\n"

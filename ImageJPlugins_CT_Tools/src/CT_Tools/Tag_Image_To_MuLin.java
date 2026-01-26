@@ -12,16 +12,18 @@ import ij.process.*;
 import jhd.ImageJAddins.GenericDialogAddin;
 import jhd.ImageJAddins.GenericDialogAddin.*;
 import jhd.MuMassCalculator.MuMassCalculator;
-import jhd.TagTools.*;
-
+import tagTools.*;
+import tagTools.TagListTools.TagSet;
+import tagTools.TagListImageTools;
 import java.awt.*;
 
 /** A plugin for converting tag images to linear attenuation*/
 public class Tag_Image_To_MuLin implements PlugInFilter, DialogListener
 {
 	MuMassCalculator mmc = new MuMassCalculator();
-	MatlListTools mlt = new MatlListTools();
-	MatlListTools.TagSet myTagSet;
+	TagListTools tlt = new TagListTools();
+	TagListImageTools tlit = new TagListImageTools();
+	TagSet myTagSet;
 	String[] matlNames;
 	double keV=100;
 	
@@ -60,7 +62,7 @@ public class Tag_Image_To_MuLin implements PlugInFilter, DialogListener
 		}
 		String dir = IJ.getDirectory("plugins");
 		String path = dir + "DialogData\\DefaultMaterials.csv";
-		myTagSet = mlt.loadTagFile(path);
+		myTagSet = tlt.readTagSetFile(path);
 		if(myTagSet==null)
 		{
 			IJ.error("The tagSet at " + path + " failed to load.");
@@ -69,7 +71,7 @@ public class Tag_Image_To_MuLin implements PlugInFilter, DialogListener
 		else
 		{
 			//Get names array from TagSet
-			matlNames = mlt.getTagSetMatlNamesAsArray(myTagSet);
+			matlNames = tlt.getTagSetMatlNamesAsArray(myTagSet);
 			gda = new GenericDialogAddin();
 			
 			gd = new GenericDialog("Convert Tags to MuLin");
@@ -111,7 +113,7 @@ public class Tag_Image_To_MuLin implements PlugInFilter, DialogListener
 				{
 					tauImp.setSlice(i);
 					float[] tauPix = (float[])tauImp.getProcessor().getPixels();
-					mlt.tagsToLinearAttn(tauPix, myTagSet, keV);
+					tlit.tagsToLinearAttn(tauPix, myTagSet, keV);
 				}
 				
 				tauImp.show();

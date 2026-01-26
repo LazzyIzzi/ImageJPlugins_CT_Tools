@@ -45,8 +45,8 @@ import gray.AtomData.*;
 import jhd.Projection.ParallelProjectors;
 import jhd.Projection.ParallelProjectors.BremParallelParams;
 import jhd.Serialize.Serializer;
-import jhd.TagTools.MatlListTools;
-import jhd.TagTools.MatlListTools.TagSet;
+import tagTools.*;
+import tagTools.TagListTools.TagSet;
 
 //*******************************************************************************
 
@@ -72,10 +72,10 @@ public class Tag_Image_To_Parallel_Brems_Sinogram implements PlugInFilter , Dial
 	Serializer ser = new Serializer();
 		
 	//The class used to manage materials Lists
-	MatlListTools mlt=new MatlListTools();
+	TagListTools mlt=new TagListTools();
 	
 	//The nested class containing  materials list tag information
-	MatlListTools.TagSet tagSet;
+	TagSet tagSet;
 	
 	//the full path to the default tagSet
 	String tagSetPath = IJ.getDirectory("plugins") + "DialogData\\DefaultMaterials.csv";
@@ -578,7 +578,7 @@ public class Tag_Image_To_Parallel_Brems_Sinogram implements PlugInFilter , Dial
 		
 		pixelSize = cal.pixelWidth;
 
-		tagSet = mlt.loadTagFile(tagSetPath);
+		tagSet = mlt.readTagSetFile(tagSetPath);
 		if(tagSet==null)
 		{
 			IJ.error("The Materials tagSet failed to load\n"

@@ -20,7 +20,6 @@ package CT_Tools;
 
 import java.awt.*;
 import java.awt.event.*;
-import java.util.*;
 
 import ij.plugin.*;
 import ij.text.TextPanel;
@@ -30,9 +29,8 @@ import ij.measure.*;
 import jhd.ImageJAddins.GenericDialogAddin;
 import jhd.ImageJAddins.GenericDialogAddin.*;
 import jhd.MuMassCalculator.*;
-import jhd.TagTools.*;
-import jhd.TagTools.MatlListTools.*;
-
+import tagTools.*;
+import tagTools.TagListTools.TagSet;
 
 public class Xray_Lookup_Ratio implements PlugIn, ActionListener, DialogListener
 {
@@ -47,7 +45,7 @@ public class Xray_Lookup_Ratio implements PlugIn, ActionListener, DialogListener
 	final Color white = new Color(255,255,255);
 	
 	MuMassCalculator mmc= new MuMassCalculator();
-	MatlListTools mlt=new MatlListTools();
+	TagListTools mlt=new TagListTools();
 	TagSet tagSet;
 	String[] matlName;
 	String[] matlFormula;
@@ -95,7 +93,7 @@ public class Xray_Lookup_Ratio implements PlugIn, ActionListener, DialogListener
 		String defaultFilePath = dir + "DialogData\\DefaultMaterials.csv";
 
 		//Initialize master list of material data
-		tagSet = mlt.loadTagFile(defaultFilePath);
+		tagSet = mlt.readTagSetFile(defaultFilePath);
 		matlName = mlt.getTagSetMatlNamesAsArray(tagSet);
 		matlFormula = mlt.getTagSetMatlFormulasAsArray(tagSet);
 		matlGmPerCC = mlt.getTagSetMatlGmPerccAsArray(tagSet);

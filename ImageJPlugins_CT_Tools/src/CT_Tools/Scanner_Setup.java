@@ -13,11 +13,13 @@ import ij.text.TextWindow;
 import ij.gui.*;
 import ij.measure.ResultsTable;
 import jhd.Serialize.Serializer;
-import jhd.TagTools.MatlListTools;
-import jhd.TagTools.MatlListTools.TagSet;
 import jhd.ImageJAddins.GenericDialogAddin;
 import jhd.ImageJAddins.GenericDialogAddin.*;
 import jhd.MuMassCalculator.*;
+
+import tagTools.*;
+import tagTools.TagListTools.TagSet;
+
 
 public class Scanner_Setup implements PlugIn, DialogListener, ActionListener
 //public class Beam_Hardening_Estimator implements PlugIn, ActionListener
@@ -74,11 +76,11 @@ public class Scanner_Setup implements PlugIn, DialogListener, ActionListener
 	Serializer ser = new Serializer();
 	
 	//A class to manage materials lists organized as CSV tag files
-	MatlListTools mlt=new MatlListTools();
+	TagListTools mlt=new TagListTools();
 	
 	//A tagSet consists of a String tagHdr[4] and an ArrayList of tag data
-	MatlListTools.TagSet matlTagSet;
-	MatlListTools.TagSet elementTagSet;
+	TagSet matlTagSet;
+	TagSet elementTagSet;
 	
 	//Used to convert the tagData ArrayList to the separate arrays needed by GenericDialog
 	String[] matlName,elementName;
@@ -836,7 +838,7 @@ public class Scanner_Setup implements PlugIn, DialogListener, ActionListener
 		String dir = IJ.getDirectory("plugins");
 		String matlFilePath = dir + "DialogData\\DefaultMaterials.csv";
 		
-		matlTagSet = mlt.loadTagFile(matlFilePath);
+		matlTagSet = mlt.readTagSetFile(matlFilePath);
 		if(matlTagSet==null)
 		{
 			IJ.showMessage("DefaultMaterials.csv failed to load");

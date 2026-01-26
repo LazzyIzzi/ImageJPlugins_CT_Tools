@@ -62,8 +62,11 @@ import jhd.MuMassCalculator.*;
 import gray.AtomData.*;
 import jhd.Projection.*;
 import jhd.Serialize.*;
-import jhd.TagTools.*;
-import jhd.TagTools.MatlListTools.TagSet;
+//import jhd.TagTools.*;
+//import jhd.TagTools.MatlListTools.TagSet;
+
+import tagTools.*;
+import tagTools.TagListTools.TagSet;
 
 
 public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogListener//, ActionListener
@@ -89,10 +92,10 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 	Serializer ser = new Serializer();
 
 	//The class used to manage materials Lists
-	MatlListTools mlt=new MatlListTools();
+	TagListTools tlt=new TagListTools();
 
 	//The nested class containing  materials list tag information
-	MatlListTools.TagSet tagSet;
+	TagSet tagSet;
 
 	//the full path to the default tagSet file
 	String tagSetPath =  IJ.getDirectory("plugins") + "DialogData\\DefaultMaterials.csv";
@@ -177,7 +180,7 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 					if(Double.isNaN(numAngles) || numAngles <1) dialogOK=false;						
 					break;
 				case "detectorFilter":
-					filteredTagData = mlt.filterTagData(tagSet, filterStr);
+					filteredTagData = tlt.filterTagData(tagSet, filterStr);
 					if(filterStr.equals(""))
 					{
 						//copy the original arrays into the filtered arrays
@@ -187,9 +190,9 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 					}
 					else
 					{
-						filteredMatlName = mlt.getTagSetMatlNamesAsArray(filteredTagData);
-						filteredMatlFormula = mlt.getTagSetMatlFormulasAsArray(filteredTagData);
-						filteredMatlGmPerCC =mlt.getTagSetMatlGmPerccAsArray(filteredTagData);
+						filteredMatlName = tlt.getTagSetMatlNamesAsArray(filteredTagData);
+						filteredMatlFormula = tlt.getTagSetMatlFormulasAsArray(filteredTagData);
+						filteredMatlGmPerCC =tlt.getTagSetMatlGmPerccAsArray(filteredTagData);
 					}
 					detMaterialCF.getChoice().setVisible(false);
 					detMaterialCF.getChoice().removeAll();
@@ -570,10 +573,10 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 		//Tagged Image
 		dlogSet.pixSizeCM=imageImp.getCalibration().pixelWidth;		
 		//convert Default tag data to arrays
-		int[] tag =  mlt.getTagSetMatlTagAsArray(tagSet);//new int[tagSet.tagData.size()];
-		String[] name =  mlt.getTagSetMatlNamesAsArray(tagSet);//new String[tagSet.tagData.size()];
-		String[] formula =  mlt.getTagSetMatlFormulasAsArray(tagSet);//new String[tagSet.tagData.size()];
-		double[] gmPerCC =  mlt.getTagSetMatlGmPerccAsArray(tagSet);//new double[tagSet.tagData.size()];
+		int[] tag =  tlt.getTagSetMatlTagAsArray(tagSet);//new int[tagSet.tagData.size()];
+		String[] name =  tlt.getTagSetMatlNamesAsArray(tagSet);//new String[tagSet.tagData.size()];
+		String[] formula =  tlt.getTagSetMatlFormulasAsArray(tagSet);//new String[tagSet.tagData.size()];
+		double[] gmPerCC =  tlt.getTagSetMatlGmPerccAsArray(tagSet);//new double[tagSet.tagData.size()];
 
 		dlogSet.matlTag=tag;
 		dlogSet.matlName=name;
@@ -706,7 +709,7 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 		
 		pixelSize = cal.pixelWidth;
 
-		tagSet = mlt.loadTagFile(tagSetPath);
+		tagSet = tlt.readTagSetFile(tagSetPath);
 
 		//Read the saved dialog settings
 		bfpSet = (FanProjectors.BremFanParams)ser.ReadSerializedObject(settingsPath);		
@@ -716,10 +719,10 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 		}
 		else // the DefaultMaterials.csv file may have been modified since previous plugin run
 		{
-			bfpSet.matlFormula = mlt.getTagSetMatlFormulasAsArray(tagSet);
-			bfpSet.matlGmPerCC = mlt.getTagSetMatlGmPerccAsArray(tagSet);
-			bfpSet.matlName = mlt.getTagSetMatlNamesAsArray(tagSet);
-			bfpSet.matlTag = mlt.getTagSetMatlTagAsArray(tagSet);
+			bfpSet.matlFormula = tlt.getTagSetMatlFormulasAsArray(tagSet);
+			bfpSet.matlGmPerCC = tlt.getTagSetMatlGmPerccAsArray(tagSet);
+			bfpSet.matlName = tlt.getTagSetMatlNamesAsArray(tagSet);
+			bfpSet.matlTag = tlt.getTagSetMatlTagAsArray(tagSet);
 		}
 
 		filteredMatlName=bfpSet.matlName;

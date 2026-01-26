@@ -4,8 +4,6 @@ import ij.IJ;
 import ij.ImagePlus;
 import ij.measure.ResultsTable;
 import ij.plugin.PlugIn;
-import java.util.Enumeration;
-import java.util.Properties;
 
 public class Show_CT_Properties implements PlugIn
 {

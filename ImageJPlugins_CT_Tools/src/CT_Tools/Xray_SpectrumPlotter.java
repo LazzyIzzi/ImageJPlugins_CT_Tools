@@ -46,9 +46,8 @@ import ij.text.TextPanel;
 import jhd.ImageJAddins.GenericDialogAddin;
 import jhd.ImageJAddins.GenericDialogAddin.*;
 import jhd.MuMassCalculator.MuMassCalculator;
-import jhd.TagTools.MatlListTools;
-import jhd.TagTools.MatlListTools.TagSet;
-
+import tagTools.*;
+import tagTools.TagListTools.*;
 
 public class Xray_SpectrumPlotter implements PlugIn, ActionListener, DialogListener
 {
@@ -77,8 +76,8 @@ public class Xray_SpectrumPlotter implements PlugIn, ActionListener, DialogListe
 
 	String[] edgeNames;//holds a list of absorption edge labels, K, L1, L2 etc.	
 	//For loading the defaultMaterials.csv file into arrays
-	MatlListTools mlt=new MatlListTools();
-	MatlListTools.TagSet tagSet;
+	TagListTools mlt=new TagListTools();
+	TagSet tagSet;
 	String[] matlNames;
 	String[] matlFormulas;
 	String[] filteredMatlNames;
@@ -387,7 +386,7 @@ public class Xray_SpectrumPlotter implements PlugIn, ActionListener, DialogListe
 
 	private void loadTagFile(String filePath)
 	{
-		tagSet = mlt.loadTagFile(filePath);
+		tagSet = mlt.readTagSetFile(filePath);
 		if(tagSet==null)
 		{
 			IJ.showMessage("Tagset Load Failure", "The file " + filePath + " failed to load");
@@ -409,7 +408,7 @@ public class Xray_SpectrumPlotter implements PlugIn, ActionListener, DialogListe
 		
 		//Load the tagSet data into arrays
 		int i=0;
-		for(MatlListTools.TagData td : tagSet.tagData)
+		for(TagData td : tagSet.tagData)
 		{
 			matlNames[i]= td.matlName;
 			matlFormulas[i] = td.matlFormula;

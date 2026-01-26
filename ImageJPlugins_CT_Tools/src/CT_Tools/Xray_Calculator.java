@@ -26,17 +26,17 @@ import ij.measure.*;
 import jhd.MuMassCalculator.*;
 import jhd.ImageJAddins.GenericDialogAddin;
 import jhd.ImageJAddins.GenericDialogAddin.*;
-import jhd.TagTools.*;
-import jhd.TagTools.MatlListTools.TagSet;
 import gray.AtomData.*;
+import tagTools.*;
+import tagTools.TagListTools.TagSet;
 
 
 	public class Xray_Calculator implements PlugIn, ActionListener, DialogListener
 {
 
 	MuMassCalculator mmc= new MuMassCalculator();
-	MatlListTools mlt=new MatlListTools();
-	MatlListTools.TagSet tagSet;
+	TagListTools tlt=new TagListTools();
+	TagSet tagSet;
 	String[] matlName;
 	String[] matlFormula;
 	double[] matlGmPerCC;
@@ -85,12 +85,20 @@ import gray.AtomData.*;
 		//Location of the default materials list
 		String dir = IJ.getDirectory("plugins");
 		String defaultFilePath = dir + "DialogData\\DefaultMaterials.csv";
+		IJ.log(defaultFilePath);
 		
-		tagSet = mlt.loadTagFile(defaultFilePath);
+		tagSet = tlt.readTagSetFile(defaultFilePath);
+		
+		if(tagSet==null) {
+			IJ.log("Error reading " + defaultFilePath);
+			return;
+		}
+		IJ.log("tagData size=" + tagSet.tagData.size());
 		//Get arrays from TagSet
-		matlName = mlt.getTagSetMatlNamesAsArray(tagSet);
-		matlFormula = mlt.getTagSetMatlFormulasAsArray(tagSet);
-		matlGmPerCC = mlt.getTagSetMatlGmPerccAsArray(tagSet);
+		matlName = tlt.getTagSetMatlNamesAsArray(tagSet);
+		matlFormula = tlt.getTagSetMatlFormulasAsArray(tagSet);
+		matlGmPerCC = tlt.getTagSetMatlGmPerccAsArray(tagSet);
+		
 		
 		filteredMatlName=matlName;
 		filteredMatlFormula=matlFormula;
@@ -325,7 +333,7 @@ import gray.AtomData.*;
 				switch(name)
 				{
 				case "filter":
-					TagSet filteredTagData = mlt.filterTagData(tagSet, filterStr);
+					TagSet filteredTagData = tlt.filterTagData(tagSet, filterStr);
 					if(filterStr.equals(""))
 					{
 						//copy the original arrays into the filtered arrays
@@ -335,9 +343,9 @@ import gray.AtomData.*;
 					}
 					else
 					{
-						filteredMatlName = mlt.getTagSetMatlNamesAsArray(filteredTagData);
-						filteredMatlFormula = mlt.getTagSetMatlFormulasAsArray(filteredTagData);
-						filteredMatlGmPerCC =mlt.getTagSetMatlGmPerccAsArray(filteredTagData);
+						filteredMatlName = tlt.getTagSetMatlNamesAsArray(filteredTagData);
+						filteredMatlFormula = tlt.getTagSetMatlFormulasAsArray(filteredTagData);
+						filteredMatlGmPerCC =tlt.getTagSetMatlGmPerccAsArray(filteredTagData);
 					}
 					matlNameCF.getChoice().setVisible(false);
 					matlNameCF.getChoice().removeAll();
