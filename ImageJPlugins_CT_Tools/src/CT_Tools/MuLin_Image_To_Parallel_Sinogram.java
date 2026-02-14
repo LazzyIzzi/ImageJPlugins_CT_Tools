@@ -18,11 +18,9 @@ import ij.gui.*;
 import ij.measure.*;
 
 import java.awt.*;
-
 import jhd.ImageJAddins.GenericDialogAddin;
 import jhd.ImageJAddins.GenericDialogAddin.*;
 import jhd.Projection.*;
-//import CT_Tools.Calc_Sinogram_Properties;
 
 public class MuLin_Image_To_Parallel_Sinogram implements PlugInFilter, DialogListener
 {
@@ -157,6 +155,7 @@ public class MuLin_Image_To_Parallel_Sinogram implements PlugInFilter, DialogLis
 
 		gd.addHelp("https://lazzyizzi.github.io/CT_ReconPages/CTsimulator.html");
 		gd.setBackground(myColor);
+		gd.setIconImage(new ResourceReader().readImageFile("LazzyIzzi-32.png"));
 		
 		//the pad option can be switched after the dialog fields
 		//have been set up;

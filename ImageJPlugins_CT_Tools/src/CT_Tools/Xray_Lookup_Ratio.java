@@ -201,6 +201,7 @@ public class Xray_Lookup_Ratio implements PlugIn, ActionListener, DialogListener
 		gd.addHelp("https://lazzyizzi.github.io/CT_ReconPages/XrayLookupRatio.html");		
 		gd.addDialogListener(this);
 		gd.setBackground(myColor);
+		gd.setIconImage(new ResourceReader().readImageFile("LazzyIzzi-32.png"));
 		gd.addMessage("Edit tabulated density to match lab measurement");
 
 		gd.showDialog();

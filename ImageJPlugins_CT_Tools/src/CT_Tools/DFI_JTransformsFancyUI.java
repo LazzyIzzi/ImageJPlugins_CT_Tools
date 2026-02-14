@@ -127,6 +127,7 @@ public class DFI_JTransformsFancyUI implements ActionListener, PlugInFilter, Ima
 		gd.addButton("Reconstruct Test Slice", this);
 		reconSliceBF = gda.getButtonField(gd, "reconSliceBtn");
 		gd.setBackground(myColor);
+		gd.setIconImage(new ResourceReader().readImageFile("LazzyIzzi-32.png"));
 
 		gd.showDialog();
 		

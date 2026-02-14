@@ -425,6 +425,7 @@ public class Apply_Linearization implements PlugIn, DialogListener
 				+ "to your sinogram",myFont,Color.BLACK);
 		gd.addHelp("https://lazzyizzi.github.io/CT_ReconPages/Linearization.html");
 		gd.setBackground(myColor);
+		gd.setIconImage(new ResourceReader().readImageFile("LazzyIzzi-32.png"));
 		gd.showDialog();
 		
 

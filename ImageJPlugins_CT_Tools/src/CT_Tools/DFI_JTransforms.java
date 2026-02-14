@@ -10,6 +10,7 @@ import ij.IJ;
 import ij.ImagePlus;
 import ij.ImageStack;
 import ij.WindowManager;
+import ij.gui.GUI;
 import ij.gui.GenericDialog;
 import ij.gui.NewImage;
 import ij.gui.OvalRoi;
@@ -34,7 +35,8 @@ import jhd.ImageJAddins.GenericDialogAddin.*;
  *
  */
 public class DFI_JTransforms implements ActionListener, PlugInFilter {
-	GenericDialog gd = new GenericDialog("DFI Sinogram Reconstruction");
+	//GenericDialog gd = new GenericDialog("DFI Sinogram Reconstruction");
+	GenericDialog gd = GUI.newNonBlockingDialog("DFI Sinogram Reconstruction");
 	DFIutils dfiu = new DFIutils(); // does the reconstruction
 	JTransformsUtils jtu = new JTransformsUtils(); //Converts data to-from JTransforms sequenced format
 	SinogramUtils su = new SinogramUtils();// Uses ImageJ methods to prepare the sinograms for reconstruction.
@@ -109,6 +111,7 @@ public class DFI_JTransforms implements ActionListener, PlugInFilter {
 		gd.addButton("Reconstruct Test Slice", this);
 		reconSliceBF = gda.getButtonField(gd, "reconSliceBtn");
 		gd.setBackground(myColor);
+		gd.setIconImage(new ResourceReader().readImageFile("LazzyIzzi-32.png"));
 		gd.addHelp("https://lazzyizzi.github.io/CT_ReconPages/DFI_Recon.html");
 		gd.showDialog();
 

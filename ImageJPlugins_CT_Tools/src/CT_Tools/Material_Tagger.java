@@ -10,6 +10,7 @@ import ij.process.ImageProcessor;
 import ij.process.ImageStatistics;
 import jhd.ImageJAddins.GenericDialogAddin;
 import jhd.ImageJAddins.GenericDialogAddin.*;
+
 import java.awt.event.*;
 import java.awt.*;
 import tagTools.*;
@@ -140,6 +141,7 @@ public class Material_Tagger implements PlugInFilter, DialogListener, ActionList
 			
 			gd.addHelp("https://lazzyizzi.github.io/CT_ReconPages/MaterialTagger.html");
 			gd.setBackground(myColor);
+			gd.setIconImage(new ResourceReader().readImageFile("LazzyIzzi-32.png"));
 			gd.showDialog();
 			
 			if(gd.wasOKed())

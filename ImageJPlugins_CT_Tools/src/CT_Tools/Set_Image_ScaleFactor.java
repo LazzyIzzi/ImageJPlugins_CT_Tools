@@ -25,6 +25,7 @@ public class Set_Image_ScaleFactor implements PlugIn {
 		
 		gd.addStringField("ScaleFactor", Double.toString(scaleFactor));
 		gd.setBackground(myColor);		
+		gd.setIconImage(new ResourceReader().readImageFile("LazzyIzzi-32.png"));
 		gd.showDialog();
 		
 		if(gd.wasOKed())

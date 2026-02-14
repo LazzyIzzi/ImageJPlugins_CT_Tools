@@ -352,7 +352,8 @@ public class Tag_Image_To_Parallel_Brems_Sinogram implements PlugInFilter , Dial
 				
 		gd.addHelp("https://lazzyizzi.github.io/CT_ReconPages/CTsimulator.html");
 		gd.setBackground(myColor);
-     	
+		gd.setIconImage(new ResourceReader().readImageFile("LazzyIzzi-32.png"));
+    	
 		//the pad option can be awitched after the dialog fields
 		//have been set up;
 		if(originalWidth!= originalHeight)

@@ -116,6 +116,7 @@ public class Linear_Attenuation_Error implements PlugIn {
 		gd.addChoice("Tag Image:", winTitles, winTitles[0]);
 		gd.addNumericField("keV", 100);
 		gd.setBackground(myColor);
+		gd.setIconImage(new ResourceReader().readImageFile("LazzyIzzi-32.png"));
 		gd.showDialog();
 	}
 	

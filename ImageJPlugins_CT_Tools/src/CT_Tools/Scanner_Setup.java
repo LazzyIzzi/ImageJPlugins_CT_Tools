@@ -4,7 +4,6 @@ import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
 import java.util.Arrays;
-//import java.util.Vector;
 
 import ij.*;
 import ij.plugin.*;
@@ -356,6 +355,7 @@ public class Scanner_Setup implements PlugIn, DialogListener, ActionListener
 		gd.addHelp("https://lazzyizzi.github.io/CT_ReconPages/CtScannerSetup.html");
 				
 		gd.setBackground(myColor);
+		gd.setIconImage(new ResourceReader().readImageFile("LazzyIzzi-32.png"));
 		gd.showDialog();
 	}
 

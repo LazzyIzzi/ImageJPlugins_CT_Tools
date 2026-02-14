@@ -869,11 +869,9 @@ public class CT_Recon_ParallelBeam implements ActionListener, DialogListener, Im
 		reconSliceBF = gda.getButtonField(gd, "reconSliceBtn");
 
 		gd.setBackground(myColor);
-
+		gd.setIconImage(new ResourceReader().readImageFile("LazzyIzzi-32.png"));
 		gd.setOKLabel("OK(reconstruct all)");
-
 		gd.addHelp("https://lazzyizzi.github.io/CT_ReconPages/CtRecon.html");		
-
 		gd.showDialog();
 
 		if(gd.wasCanceled())

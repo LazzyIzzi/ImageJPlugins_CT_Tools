@@ -85,7 +85,6 @@ import tagTools.TagListTools.TagSet;
 		//Location of the default materials list
 		String dir = IJ.getDirectory("plugins");
 		String defaultFilePath = dir + "DialogData\\DefaultMaterials.csv";
-		IJ.log(defaultFilePath);
 		
 		tagSet = tlt.readTagSetFile(defaultFilePath);
 		
@@ -93,17 +92,15 @@ import tagTools.TagListTools.TagSet;
 			IJ.log("Error reading " + defaultFilePath);
 			return;
 		}
-		IJ.log("tagData size=" + tagSet.tagData.size());
+
 		//Get arrays from TagSet
 		matlName = tlt.getTagSetMatlNamesAsArray(tagSet);
 		matlFormula = tlt.getTagSetMatlFormulasAsArray(tagSet);
-		matlGmPerCC = tlt.getTagSetMatlGmPerccAsArray(tagSet);
-		
+		matlGmPerCC = tlt.getTagSetMatlGmPerccAsArray(tagSet);		
 		
 		filteredMatlName=matlName;
 		filteredMatlFormula=matlFormula;
 		filteredMatlGmPerCC=matlGmPerCC;
-
 
 		DoDialog();
 		DoRoutine();		
@@ -155,6 +152,7 @@ import tagTools.TagListTools.TagSet;
 		gd.addMessage("_____________________________",myFont);
 		gd.addHelp("https://lazzyizzi.github.io/CT_ReconPages/XrayCalculator.html");
 		gd.setBackground(myColor);		
+		gd.setIconImage(new ResourceReader().readImageFile("LazzyIzzi-32.png"));
 		gd.showDialog();
 		
 	}

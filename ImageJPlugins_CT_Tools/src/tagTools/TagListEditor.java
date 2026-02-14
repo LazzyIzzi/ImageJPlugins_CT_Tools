@@ -3,9 +3,7 @@ package tagTools;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Desktop;
-import java.awt.Dimension;
 import java.awt.Font;
-import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.net.URI;
@@ -14,13 +12,12 @@ import java.util.ArrayList;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
-//import javax.swing.event.RowSorterEvent;
-//import javax.swing.event.RowSorterListener;
 import javax.swing.event.TableModelEvent;
 import javax.swing.event.TableModelListener;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 
+import CT_Tools.ResourceReader;
 import ij.IJ;
 import ij.WindowManager;
 import jhd.MuMassCalculator.MuMassCalculator;
@@ -54,7 +51,7 @@ public class TagListEditor{
 	 * 
 	 */
 	public void editMaterialsList(String tagFilePath) {
-
+		//DocumentReader dr = new DocumentReader();
 		tagSet = mlt.readTagSetFile(tagFilePath);
 		if (tagSet == null) {
 			IJ.error("Error loading tag file");
@@ -65,12 +62,10 @@ public class TagListEditor{
 
 		// Create the JFrame (Window) to hold the editor
 		myJFrame = new JFrame("Materials Editor");
-//		myJFrame.setIconImage(Toolkit.getDefaultToolkit()
-//				.getImage(MaterialListEditor.class.getResource("/jhd/TagTools/LazzyIzzi-32.png")));
-		myJFrame.setIconImage(Toolkit.getDefaultToolkit()
-				.getImage(TagListEditor.class.getResource("/tagTools/LazzyIzzi-32.png")));
+		//myJFrame.setIconImage(iconImp.getImage());
+//		myJFrame.setIconImage(new DocumentReader().readImagePlusFile("LazzyIzzi-32.png").getImage());
+		myJFrame.setIconImage(new ResourceReader().readImageFile("LazzyIzzi-32.png"));
 		myJFrame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
-		//myJFrame.setMaximumSize(new Dimension(541, 465));
 		myJFrame.setResizable(false);
 		myJFrame.setBounds(100, 100, 541, 465);
 		myJFrame.setFont(myFont);

@@ -183,6 +183,7 @@ public class MuLin_Image_To_Fan_Sinogram implements PlugInFilter, DialogListener
 
 		gd.addHelp("https://lazzyizzi.github.io/CT_ReconPages/CTsimulator.html");	
 		gd.setBackground(myColor);
+		gd.setIconImage(new ResourceReader().readImageFile("LazzyIzzi-32.png"));
 		
 		if(originalWidth!= originalHeight)
 		{

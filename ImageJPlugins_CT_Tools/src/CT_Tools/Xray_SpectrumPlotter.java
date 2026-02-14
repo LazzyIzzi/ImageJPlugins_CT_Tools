@@ -28,16 +28,11 @@ import java.awt.TextField;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-//import java.io.File;
-//import java.io.FileWriter;
-//import java.io.IOException;
 import java.util.ArrayList;
-//import java.util.Vector;
 
 import gray.AtomData.AtomData;
 import ij.IJ;
 import ij.ImagePlus;
-//import ij.Macro;
 import ij.WindowManager;
 import ij.gui.*;
 import ij.measure.ResultsTable;
@@ -281,6 +276,7 @@ public class Xray_SpectrumPlotter implements PlugIn, ActionListener, DialogListe
 		gd.addMessage("_____________________________",myFont);
 		gd.addHelp("https://lazzyizzi.github.io/CT_ReconPages/XraySpectrumPlotter.html");
 		gd.setBackground(myColor);
+		gd.setIconImage(new ResourceReader().readImageFile("LazzyIzzi-32.png"));
 
 		gd.showDialog();
 	}

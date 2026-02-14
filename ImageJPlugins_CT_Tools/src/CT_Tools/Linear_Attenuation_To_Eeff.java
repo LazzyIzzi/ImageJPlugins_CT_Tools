@@ -110,6 +110,7 @@ public class Linear_Attenuation_To_Eeff implements PlugIn {
 		gd.addChoice("CT Slice:", winTitles, winTitles[0]);
 		gd.addChoice("Tag Image:", winTitles, winTitles[0]);
 		gd.setBackground(myColor);
+		gd.setIconImage(new ResourceReader().readImageFile("LazzyIzzi-32.png"));
 		gd.showDialog();
 	}
 	

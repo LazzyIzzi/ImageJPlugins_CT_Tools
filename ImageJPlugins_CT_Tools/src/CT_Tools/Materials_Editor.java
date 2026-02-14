@@ -15,7 +15,8 @@ public class Materials_Editor implements PlugIn {
 		String dir = IJ.getDirectory("plugins");
 		String fileName = "DefaultMaterials.csv";
 		String filePath = dir + "DialogData\\" + fileName;		
-		TagListEditor tle = new TagListEditor();		
+		//IJ.log(filePath);
+		TagListEditor tle = new TagListEditor();
 		tle.editMaterialsList(filePath);
 	}
 }

@@ -113,7 +113,7 @@ public class JTransformsUtilsDFI {
 	/**
 	 * @return The text of the JTransforms License
 	 */
-	protected String getJTransformsLicense() {
+	public String getJTransformsLicenseDFI() {
 
 		String dfiTxt = "DFI_JTransforms is an ImageJ plugin for reconstructing parallel-beam\r\n"
 				+ "(0-180deg) sinograms into tomographic slices using Direct Fourier Inversion\r\n"

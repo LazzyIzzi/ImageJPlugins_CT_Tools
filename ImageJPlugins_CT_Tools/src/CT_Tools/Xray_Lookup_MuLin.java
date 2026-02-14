@@ -20,6 +20,7 @@ package CT_Tools;
 
 import java.awt.*;
 import java.awt.event.*;
+
 import ij.plugin.*;
 import ij.text.TextPanel;
 import ij.gui.*;
@@ -191,6 +192,7 @@ public class Xray_Lookup_MuLin implements PlugIn, ActionListener, DialogListener
 		gd.addHelp("https://lazzyizzi.github.io/CT_ReconPages/XrayLookupMuLin.html");		
 		gd.addDialogListener(this);
 		gd.setBackground(myColor);
+		gd.setIconImage(new ResourceReader().readImageFile("LazzyIzzi-32.png"));
 		gd.showDialog();
 
 	}

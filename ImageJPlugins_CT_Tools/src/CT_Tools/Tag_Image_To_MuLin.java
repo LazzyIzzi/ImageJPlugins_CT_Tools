@@ -17,6 +17,7 @@ import tagTools.TagListTools.TagSet;
 import tagTools.TagListImageTools;
 import java.awt.*;
 
+
 /** A plugin for converting tag images to linear attenuation*/
 public class Tag_Image_To_MuLin implements PlugInFilter, DialogListener
 {
@@ -82,6 +83,7 @@ public class Tag_Image_To_MuLin implements PlugInFilter, DialogListener
 			keVNF = gda.getNumericField(gd, null, "keV");
 			gd.addHelp("https://lazzyizzi.github.io/CT_ReconPages/TagsToMuLin.html");
 			gd.setBackground(myColor);
+			gd.setIconImage(new ResourceReader().readImageFile("LazzyIzzi-32.png"));
 			gd.showDialog();
 
 			if(gd.wasCanceled())

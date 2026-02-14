@@ -62,9 +62,6 @@ import jhd.MuMassCalculator.*;
 import gray.AtomData.*;
 import jhd.Projection.*;
 import jhd.Serialize.*;
-//import jhd.TagTools.*;
-//import jhd.TagTools.MatlListTools.TagSet;
-
 import tagTools.*;
 import tagTools.TagListTools.TagSet;
 
@@ -391,6 +388,7 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 		//gd.addCheckbox("Pad Image", padImage);
 		gd.addHelp("https://lazzyizzi.github.io/CT_ReconPages/CTsimulator.html");
 		gd.setBackground(myColor);
+		gd.setIconImage(new ResourceReader().readImageFile("LazzyIzzi-32.png"));
 		
 		if(originalWidth!= originalHeight)
 		{
