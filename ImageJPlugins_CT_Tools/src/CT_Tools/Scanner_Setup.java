@@ -432,7 +432,7 @@ public class Scanner_Setup implements PlugIn, DialogListener, ActionListener
 
 	private void getSelections()
 	{
-		boolean dialogOK=true;
+		//boolean dialogOK=true;
 		
 		gd.resetCounters();
 		bhSet.target = gd.getNextChoice();

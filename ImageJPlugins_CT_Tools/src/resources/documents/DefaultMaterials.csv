@@ -151,3 +151,4 @@ Tag,Name,X:1:Y:1 Formula,gm/cc
 158,Water 0.9% Saline,H:2:O:1:NA:0.0038:CL:0.0038,1.0046
 159,Water 10% Brine,H:2:O:1:NA:0.033:CL:0.033,1.07
 160,Sodium pyrosilicate,NA:6:SI:2:O:7,2.615
+200,Brass red,CU:.85:SN:0.05:ZN:0.05:PB:0.05,8.72
