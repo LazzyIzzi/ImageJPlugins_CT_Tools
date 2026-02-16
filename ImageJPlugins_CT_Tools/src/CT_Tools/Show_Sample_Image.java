@@ -22,7 +22,7 @@ public class Show_Sample_Image implements PlugIn {
 	@Override
 	public void run(String arg) {
 		String[] files = { "Al_CastingWithIronAndBrassPinsTagImage-512.tif", "DryBereaSandstone_512_slice.tif","DryBereaSandstone_512_4TagImage_slice.tif",
-				"Shepp-Logan Phantom256.tif" };
+				"Shepp-Logan Phantom256.tif","Shepp-Logan Phantom256_TagImage.tif"};
 		
         try {
             @SuppressWarnings("deprecation")
