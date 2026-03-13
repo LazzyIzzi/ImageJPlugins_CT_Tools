@@ -314,12 +314,12 @@ public class Linearization_Fitter implements PlugIn , DialogListener ,ActionList
 		crvfit.doFit(CurveFitter.POLY6);
 		fitParams = crvfit.getParams();
 		fitRT.addValue("Fit", CurveFitter.fitList[CurveFitter.POLY6]);
+		fitRT.addValue("R^2", crvfit.getRSquared());
+		fitRT.addValue("Eeff", keV);		
 		for(i=0;i< fitParams.length-1;i++)
 		{
 			fitRT.addValue(hdr[i], fitParams[i]);
 		}
-		fitRT.addValue("R^2", crvfit.getRSquared());
-		fitRT.addValue("Eeff", keV);		
 		
 	
 		fitRT.incrementCounter();

@@ -297,6 +297,7 @@ public class CT_Recon_ParallelBeam implements ActionListener, DialogListener, Im
 
 	//*********************************************************************************************
 
+	@SuppressWarnings("unused")
 	private void deleteTempFiles()
 	{
 		File file = new File(copyFileLocation);
@@ -475,6 +476,7 @@ public class CT_Recon_ParallelBeam implements ActionListener, DialogListener, Im
 		//This method provided for macro recording
 		//Reordering or adding items in the dialog may break this code
 		DialogSettings ds = new DialogSettings();
+		@SuppressWarnings("unused")
 		String imgTitle = gd.getNextChoice(); //the image data is passed separately
 		ds.rotationAxis = (int)gd.getNextNumber();
 		ds.axisShiftChoice = gd.getNextChoice();
@@ -490,6 +492,7 @@ public class CT_Recon_ParallelBeam implements ActionListener, DialogListener, Im
 		ds.useScaleFactor = gd.getNextBoolean();
 		
 		gd.resetCounters();
+		@SuppressWarnings("unused")
 		int imgIndex = gd.getNextChoiceIndex();
 		ds.axisShiftIndex = gd.getNextChoiceIndex();
 		ds.cartFilterIndex = gd.getNextChoiceIndex();
@@ -625,8 +628,11 @@ public class CT_Recon_ParallelBeam implements ActionListener, DialogListener, Im
 		float	pixSize = readFloat(input);			// Size of pixels in microns 
 		int		nviews = readInt (input);			// Number of Slices
 		char 	dataFormat = (char) input.readByte();			// data format, Byte, Short, Float
+		@SuppressWarnings("unused")
 		char	pad1 = (char) input.readByte();			// reserved alignment bytes
+		@SuppressWarnings("unused")
 		char	pad2 = (char) input.readByte();			// reserved alignment bytes
+		@SuppressWarnings("unused")
 		char	pad3 = (char) input.readByte();			// reserved alignment bytes
 		int		xsize = readInt (input);
 		int		ysize = readInt (input);		// Dimensions of image 
@@ -680,7 +686,8 @@ public class CT_Recon_ParallelBeam implements ActionListener, DialogListener, Im
  
 	//*********************************************************************************************
 
-	private short readShort(DataInputStream input) throws IOException
+	@SuppressWarnings("unused")
+private short readShort(DataInputStream input) throws IOException
 	{
 		if (!littleEndian) return input.readShort(); 
 		byte b1 = input.readByte();

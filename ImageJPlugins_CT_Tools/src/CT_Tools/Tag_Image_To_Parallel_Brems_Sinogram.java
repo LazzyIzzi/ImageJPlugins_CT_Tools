@@ -38,6 +38,7 @@ import java.awt.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 
+
 import jhd.MuMassCalculator.*;
 import jhd.ImageJAddins.GenericDialogAddin;
 import jhd.ImageJAddins.GenericDialogAddin.*;
@@ -109,12 +110,21 @@ public class Tag_Image_To_Parallel_Brems_Sinogram implements PlugInFilter , Dial
 	
 	String settingsPath = IJ.getDirectory("plugins") + "DialogSettings" + File.separator + mySettingsTitle + ".ser";
 
-	NumericField detThicknessNF,detDensityNF;
+	//source
+	ChoiceField srcTargetCF;
+	NumericField srcMilliAmpsNF,srcAccelVoltsNF,srcKevMinNF;
+	//filter
+	ChoiceField filterMaterialCF;
+	NumericField filterThicknessNF;
+	//detector
+	ChoiceField detMaterialCF;	
+	NumericField detThicknessNF,detDensityNF,detPixCntNF;
 	StringField detFormulaSF,detFiltSF;
-	ChoiceField padOptionsCF,detMaterialCF;
-	NumericField detPixCntNF;
+	//other
+	ChoiceField padOptionsCF;
 	NumericField scaleFactorNF;	
 	NumericField numAnglesNF;
+	ButtonField getSetupBF;
 	
 	public boolean dialogItemChanged(GenericDialog gd, AWTEvent e)
 	{
@@ -133,6 +143,50 @@ public class Tag_Image_To_Parallel_Brems_Sinogram implements PlugInFilter , Dial
 					break;
 				}
 				
+			}			
+			if(src instanceof Button)
+			{
+				Button btn = (Button) src;
+				String btnName = btn.getName();				
+				switch(btnName) {
+				case "getSetup":
+					
+					//Read the Scanner Setup settings from the DialogSettings/ScannerSetup file 
+					String settingsPath = IJ.getDirectory("plugins") + "DialogSettings" + File.separator
+							+ "Scanner_Setup.ser";
+					MuMassCalculator.BeamHardenParams bhSet = new MuMassCalculator.BeamHardenParams();
+					bhSet = (MuMassCalculator.BeamHardenParams) ser.ReadSerializedObject(settingsPath);
+					if (bhSet == null) {
+						IJ.showMessage("Scanner Setup selections not Found.\n");
+					} else {
+						//copy the bhSet to the TagImage Parallel Projector
+						srcTargetCF.getChoice().select(bhSet.target);
+						srcAccelVoltsNF.setNumber(bhSet.kv);
+						srcMilliAmpsNF.setNumber(bhSet.ma);
+						srcKevMinNF.setNumber(bhSet.kvMin);
+
+						filterThicknessNF.setNumber(bhSet.filterCM);
+						filterMaterialCF.getChoice().select(bhSet.filter);
+						
+						//the detector material name is not recorded in the bhSet
+						//retrieve it from the tagSet.
+						String detName=null;
+						for(int i=0;i<tagSet.tagData.size();i++) {
+							if(tagSet.tagData.get(i).matlFormula.equals(bhSet.detFormula)) {
+								detName = tagSet.tagData.get(i).matlName;
+								break;
+							}							
+						}							
+						if (detName == null) {
+							IJ.showMessage("Custom detector material applied");
+						} 
+						detMaterialCF.getChoice().select(detName);
+						detFormulaSF.getTextField().setText(bhSet.detFormula);
+						detThicknessNF.setNumber(bhSet.detCM);
+						detDensityNF.setNumber(bhSet.detGmPerCC);
+					}
+					break;
+				}
 			}			
 			else if(src instanceof TextField)
 			{
@@ -300,23 +354,23 @@ public class Tag_Image_To_Parallel_Brems_Sinogram implements PlugInFilter , Dial
 		//X-ray Source set to previous selections
 		gd.addMessage("X-ray Source________________",myFont,Color.BLACK);
 		gd.addChoice("Target",targetSymb,bppSet.target);
-		//srcTargetCF = gda.getChoiceField(gd, null, "srcTarget");
+		srcTargetCF = gda.getChoiceField(gd, null, "srcTarget");
 		gd.addNumericField("KV", bppSet.kv);
-		//srcAccelVoltsNF = gda.getNumericField(gd, null, "srcAccelVolts");
+		srcAccelVoltsNF = gda.getNumericField(gd, null, "srcAccelVolts");
 		gd.addNumericField("mA", bppSet.ma);
-		//srcMilliAmpsNF = gda.getNumericField(gd, null, "srcMilliAmps");
+		srcMilliAmpsNF = gda.getNumericField(gd, null, "srcMilliAmps");
 		gd.addNumericField("KeV Bins", bppSet.nBins);
 		//srcKevBinsNF = gda.getNumericField(gd, null, "srcKevBins");
 		gd.addNumericField("Min KeV", bppSet.minKV);
-		//srcKevMinNF = gda.getNumericField(gd, null, "srcKevMin");
+		srcKevMinNF = gda.getNumericField(gd, null, "srcKevMin");
 		
 		//Filter set to previous selections
 		gd.setInsets(10,0,0);
 		gd.addMessage("Source Filter________________",myFont,Color.BLACK);
 		gd.addChoice("Material",filterSymb,bppSet.filter);
-		//filterMaterialCF = gda.getChoiceField(gd, null, "filterMaterial");
+		filterMaterialCF = gda.getChoiceField(gd, null, "filterMaterial");
 		gd.addNumericField("Thickness(cm)", bppSet.filterCM);
-		//filterThicknessNF = gda.getNumericField(gd, null, "filterThickness");
+		filterThicknessNF = gda.getNumericField(gd, null, "filterThickness");
 								
 		//Detector set to previous selections
 		gd.setInsets(10,0,0);
@@ -349,7 +403,10 @@ public class Tag_Image_To_Parallel_Brems_Sinogram implements PlugInFilter , Dial
 		//scale16CBF = gda.getCheckboxField(gd, "scale16");
 		gd.addNumericField("Scale_Factor", scaleFactor);
 		scaleFactorNF = gda.getNumericField(gd, null, "scaleFactor");
-				
+		gd.setInsets(10, 140, 0);
+		gd.addButton("Get Setup Selections", gd);
+		getSetupBF = gda.getButtonField(gd, "getSetup")
+				;
 		gd.addHelp("https://lazzyizzi.github.io/CT_ReconPages/CTsimulator.html");
 		gd.setBackground(myColor);
 		gd.setIconImage(new ResourceReader().readImageFile("LazzyIzzi-32.png"));
@@ -582,9 +639,7 @@ public class Tag_Image_To_Parallel_Brems_Sinogram implements PlugInFilter , Dial
 		tagSet = mlt.readTagSetFile(tagSetPath);
 		if(tagSet==null)
 		{
-			IJ.error("The Materials tagSet failed to load\n"
-					+ "Please locate or create \"DefaultMaterials.csv\"\n"
-					+ "and place it in the plugins/DialogData folder");
+			IJ.error("Unable to load/create plugins/DialogData/DefaultMaterials.csv");
 			return;
 		}
 				

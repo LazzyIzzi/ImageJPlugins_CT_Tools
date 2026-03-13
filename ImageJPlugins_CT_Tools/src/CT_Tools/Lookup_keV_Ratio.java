@@ -21,6 +21,7 @@ package CT_Tools;
 import java.awt.*;
 import java.awt.event.*;
 
+import DocumentReader.DocumentReader;
 import ij.plugin.*;
 import ij.text.TextPanel;
 import ij.gui.*;
@@ -29,14 +30,15 @@ import ij.measure.*;
 import jhd.ImageJAddins.GenericDialogAddin;
 import jhd.ImageJAddins.GenericDialogAddin.*;
 import jhd.MuMassCalculator.*;
-import tagTools.*;
-import tagTools.TagListTools.TagSet;
+import tagTools.TagListTools;
+import tagTools.TagListTools.TagSet;;
 
-public class Xray_Lookup_Ratio implements PlugIn, ActionListener, DialogListener
+
+public class Lookup_keV_Ratio implements PlugIn, ActionListener, DialogListener
 {
 
-	final String myDialogTitle = "X-Ray Lookup Ratio";
-	final String resultsTitle = "KeV Ratio Solutions";
+	final String myDialogTitle = "Lookup keV Ratio";
+	final String resultsTitle = "keV Ratio Solutions";
 	final int calcW=850,calcH=230;
 	//final Color buff = new Color(250,240,200);
 	final Font myFont = new Font(Font.DIALOG, Font.ITALIC+Font.BOLD, 14);
@@ -88,12 +90,20 @@ public class Xray_Lookup_Ratio implements PlugIn, ActionListener, DialogListener
 		}
 		if(Macro.getOptions()!=null) isMacro=true;
 
-		//Location of the default materials list
+//		//Location of the default materials list
 		String dir = IJ.getDirectory("plugins");
 		String defaultFilePath = dir + "DialogData\\DefaultMaterials.csv";
 
 		//Initialize master list of material data
+		//tagSet = mlt.loadTagFile(defaultFilePath);
 		tagSet = mlt.readTagSetFile(defaultFilePath);
+		if(tagSet==null)
+		{
+			IJ.error("Unable to load/create plugins/DialogData/DefaultMaterials.csv");
+			return;
+		}
+		
+		
 		matlName = mlt.getTagSetMatlNamesAsArray(tagSet);
 		matlFormula = mlt.getTagSetMatlFormulasAsArray(tagSet);
 		matlGmPerCC = mlt.getTagSetMatlGmPerccAsArray(tagSet);
@@ -137,6 +147,7 @@ public class Xray_Lookup_Ratio implements PlugIn, ActionListener, DialogListener
 	{
 
 		InitSettings();
+
 
 		//Use GenericDialogAddin methods for dialog component event handler
 		GenericDialogAddin gda = new GenericDialogAddin();
@@ -284,12 +295,14 @@ public class Xray_Lookup_Ratio implements PlugIn, ActionListener, DialogListener
 	{
 		gd.resetCounters();
 		useTabDensity = gd.getNextBoolean();
+		@SuppressWarnings("unused")
 		String filterStr1 = gd.getNextString(); 
 		ds.formulaName1 = gd.getNextString();
 		ds.formulaR1 = gd.getNextString();
 		ds.gmPerCCR1 = gd.getNextNumber();
 		ds.attnR1 = gd.getNextNumber();
 
+		@SuppressWarnings("unused")
 		String filterStr2 = gd.getNextString(); 
 		ds.formulaName2 = gd.getNextString();
 		ds.formulaR2 = gd.getNextString();

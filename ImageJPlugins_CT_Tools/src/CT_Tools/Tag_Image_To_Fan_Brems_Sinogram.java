@@ -89,7 +89,7 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 	Serializer ser = new Serializer();
 
 	//The class used to manage materials Lists
-	TagListTools tlt=new TagListTools();
+	TagListTools mlt=new TagListTools();
 
 	//The nested class containing  materials list tag information
 	TagSet tagSet;
@@ -123,15 +123,25 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 	double pixelSize;
 	String unit;
 	double scaleFactor=6000;
-
-	ChoiceField padOptionsCF,detMaterialCF;
-	NumericField detPixCntNF,detDensityNF;
+	
+	//source
+	ChoiceField srcTargetCF;
+	NumericField srcAccelVoltsNF,srcMilliAmpsNF,srcKevMinNF;
+	//filter
+	ChoiceField filterMaterialCF;
+	NumericField filterThicknessNF;
+	//detector
+	ChoiceField detMaterialCF;
+	NumericField detPixCntNF,detDensityNF,detThicknessNF;
+	StringField detFormulaSF,detFiltSF;
+	//Fan Beam
+	ChoiceField padOptionsCF;
 	NumericField scaleFactorNF;
 	NumericField numAnglesNF;
 	NumericField magnificationNF;
 	NumericField srcToDetNF;
 	MessageField axisToDetMF,detMinCntMF,paddedWidthMF;	
-	StringField detFormulaSF,detFiltSF;
+	ButtonField getSetupBF;
 	
 	//*******************************************************************************	
 	
@@ -155,6 +165,51 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 				}
 
 			}			
+			if(src instanceof Button)
+			{
+				Button btn = (Button) src;
+				String btnName = btn.getName();				
+				switch(btnName) {
+				case "getSetup":
+					
+					//Read the Scanner Setup settings from the DialogSettings/ScannerSetup file 
+					String settingsPath = IJ.getDirectory("plugins") + "DialogSettings" + File.separator
+							+ "Scanner_Setup.ser";
+					MuMassCalculator.BeamHardenParams bhSet = new MuMassCalculator.BeamHardenParams();
+					bhSet = (MuMassCalculator.BeamHardenParams) ser.ReadSerializedObject(settingsPath);
+					if (bhSet == null) {
+						IJ.showMessage("Scanner Setup selections not Found.\n");
+					} else {
+						//copy the bhSet to the TagImage Parallel Projector
+						srcTargetCF.getChoice().select(bhSet.target);
+						srcAccelVoltsNF.setNumber(bhSet.kv);
+						srcMilliAmpsNF.setNumber(bhSet.ma);
+						srcKevMinNF.setNumber(bhSet.kvMin);
+
+						filterThicknessNF.setNumber(bhSet.filterCM);
+						filterMaterialCF.getChoice().select(bhSet.filter);
+						
+						//the detector material name is not recorded in the bhSet
+						//retrieve it from the tagSet.
+						String detName=null;
+						for(int i=0;i<tagSet.tagData.size();i++) {
+							if(tagSet.tagData.get(i).matlFormula.equals(bhSet.detFormula)) {
+								detName = tagSet.tagData.get(i).matlName;
+								break;
+							}							
+						}
+						if (detName == null) {
+							IJ.showMessage("Custom detector material applied");
+						} 
+								
+						detMaterialCF.getChoice().select(detName);
+						detFormulaSF.getTextField().setText(bhSet.detFormula);
+						detThicknessNF.setNumber(bhSet.detCM);
+						detDensityNF.setNumber(bhSet.detGmPerCC);
+					}
+					break;
+				}
+			}			
 			else if(src instanceof TextField)
 			{
 				TextField tf= (TextField)src;
@@ -177,7 +232,7 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 					if(Double.isNaN(numAngles) || numAngles <1) dialogOK=false;						
 					break;
 				case "detectorFilter":
-					filteredTagData = tlt.filterTagData(tagSet, filterStr);
+					filteredTagData = mlt.filterTagData(tagSet, filterStr);
 					if(filterStr.equals(""))
 					{
 						//copy the original arrays into the filtered arrays
@@ -187,9 +242,9 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 					}
 					else
 					{
-						filteredMatlName = tlt.getTagSetMatlNamesAsArray(filteredTagData);
-						filteredMatlFormula = tlt.getTagSetMatlFormulasAsArray(filteredTagData);
-						filteredMatlGmPerCC =tlt.getTagSetMatlGmPerccAsArray(filteredTagData);
+						filteredMatlName = mlt.getTagSetMatlNamesAsArray(filteredTagData);
+						filteredMatlFormula = mlt.getTagSetMatlFormulasAsArray(filteredTagData);
+						filteredMatlGmPerCC =mlt.getTagSetMatlGmPerccAsArray(filteredTagData);
 					}
 					detMaterialCF.getChoice().setVisible(false);
 					detMaterialCF.getChoice().removeAll();
@@ -342,20 +397,28 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 		gd.addMessage("Minimum Detector Width = " +  detMinCnt + "pixels");
 		detMinCntMF = gda.getMessageField(gd, "detMinWidth");
 
+
 		//X-ray Source
 		gd.setInsets(10,0,0);
 		gd.addMessage("X-ray Source________________",myFont,Color.BLACK);
 		gd.addChoice("Target",targetSymb,"W");
+		srcTargetCF = gda.getChoiceField(gd, null, "srcTarget");
+
 		gd.addNumericField("KV", bfpSet.kv);
+		srcAccelVoltsNF = gda.getNumericField(gd, null, "srcAccelVolts");
 		gd.addNumericField("mA", bfpSet.ma);
+		srcMilliAmpsNF = gda.getNumericField(gd, null, "srcMilliAmps");
 		gd.addNumericField("KeV Bins", bfpSet.nBins);
 		gd.addNumericField("Min KeV", bfpSet.minKV);
+		srcKevMinNF = gda.getNumericField(gd, null, "srcKevMin");
 
 		//Filter
 		gd.setInsets(10,0,0);
 		gd.addMessage("Source Filter________________",myFont,Color.BLACK);
 		gd.addChoice("Material",filterSymb,bfpSet.filter);
+		filterMaterialCF = gda.getChoiceField(gd, null, "filterMaterial");
 		gd.addNumericField("Thickness(cm)", bfpSet.filterCM);
+		filterThicknessNF = gda.getNumericField(gd, null, "filterThickness");
 
 		//Detector
 		gd.setInsets(10,0,0);
@@ -380,11 +443,15 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 		gd.addStringField("Formula", bfpSet.detFormula);
 		detFormulaSF = gda.getStringField(gd, null, "detectorFormula");
 		gd.addNumericField("Thickness(cm)", bfpSet.detCM);
+		detThicknessNF = gda.getNumericField(gd, null, "detectorThickness");
 		gd.addNumericField("Density(gm/cc)", bfpSet.detGmPerCC);
 		detDensityNF = gda.getNumericField(gd, null, "detectorDensity");
 		gd.addCheckbox("Scale to 16-bit proj", scale16);
 		gd.addNumericField("Scale Factor", scaleFactor);
 
+		gd.setInsets(10, 140, 0);
+		gd.addButton("Get Setup Selections", gd);
+		getSetupBF = gda.getButtonField(gd, "getSetup");
 		//gd.addCheckbox("Pad Image", padImage);
 		gd.addHelp("https://lazzyizzi.github.io/CT_ReconPages/CTsimulator.html");
 		gd.setBackground(myColor);
@@ -571,10 +638,10 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 		//Tagged Image
 		dlogSet.pixSizeCM=imageImp.getCalibration().pixelWidth;		
 		//convert Default tag data to arrays
-		int[] tag =  tlt.getTagSetMatlTagAsArray(tagSet);//new int[tagSet.tagData.size()];
-		String[] name =  tlt.getTagSetMatlNamesAsArray(tagSet);//new String[tagSet.tagData.size()];
-		String[] formula =  tlt.getTagSetMatlFormulasAsArray(tagSet);//new String[tagSet.tagData.size()];
-		double[] gmPerCC =  tlt.getTagSetMatlGmPerccAsArray(tagSet);//new double[tagSet.tagData.size()];
+		int[] tag =  mlt.getTagSetMatlTagAsArray(tagSet);//new int[tagSet.tagData.size()];
+		String[] name =  mlt.getTagSetMatlNamesAsArray(tagSet);//new String[tagSet.tagData.size()];
+		String[] formula =  mlt.getTagSetMatlFormulasAsArray(tagSet);//new String[tagSet.tagData.size()];
+		double[] gmPerCC =  mlt.getTagSetMatlGmPerccAsArray(tagSet);//new double[tagSet.tagData.size()];
 
 		dlogSet.matlTag=tag;
 		dlogSet.matlName=name;
@@ -707,7 +774,14 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 		
 		pixelSize = cal.pixelWidth;
 
-		tagSet = tlt.readTagSetFile(tagSetPath);
+		//tagSet = mlt.loadTagFile(tagSetPath);
+		String path = IJ.getDirectory("plugins") +"DialogData\\DefaultMaterials.csv";
+		tagSet = mlt.readTagSetFile(path);
+		if(tagSet==null)
+		{
+			IJ.error("Unable to load/create plugins/DialogData/DefaultMaterials.csv");
+			return;
+		}
 
 		//Read the saved dialog settings
 		bfpSet = (FanProjectors.BremFanParams)ser.ReadSerializedObject(settingsPath);		
@@ -717,10 +791,10 @@ public class Tag_Image_To_Fan_Brems_Sinogram implements PlugInFilter , DialogLis
 		}
 		else // the DefaultMaterials.csv file may have been modified since previous plugin run
 		{
-			bfpSet.matlFormula = tlt.getTagSetMatlFormulasAsArray(tagSet);
-			bfpSet.matlGmPerCC = tlt.getTagSetMatlGmPerccAsArray(tagSet);
-			bfpSet.matlName = tlt.getTagSetMatlNamesAsArray(tagSet);
-			bfpSet.matlTag = tlt.getTagSetMatlTagAsArray(tagSet);
+			bfpSet.matlFormula = mlt.getTagSetMatlFormulasAsArray(tagSet);
+			bfpSet.matlGmPerCC = mlt.getTagSetMatlGmPerccAsArray(tagSet);
+			bfpSet.matlName = mlt.getTagSetMatlNamesAsArray(tagSet);
+			bfpSet.matlTag = mlt.getTagSetMatlTagAsArray(tagSet);
 		}
 
 		filteredMatlName=bfpSet.matlName;

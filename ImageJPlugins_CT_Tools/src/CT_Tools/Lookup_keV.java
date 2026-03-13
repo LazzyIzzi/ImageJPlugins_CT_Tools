@@ -21,6 +21,7 @@ package CT_Tools;
 import java.awt.*;
 import java.awt.event.*;
 
+import DocumentReader.DocumentReader;
 import ij.plugin.*;
 import ij.text.TextPanel;
 import ij.gui.*;
@@ -29,10 +30,12 @@ import ij.measure.*;
 import jhd.ImageJAddins.GenericDialogAddin;
 import jhd.ImageJAddins.GenericDialogAddin.*;
 import jhd.MuMassCalculator.*;
-import tagTools.*;
-import tagTools.TagListTools.*;
+import tagTools.TagListTools;
+import tagTools.TagListTools.TagData;
+import tagTools.TagListTools.TagSet;
 
-public class Xray_Lookup_MuLin implements PlugIn, ActionListener, DialogListener, KeyListener
+
+public class Lookup_keV implements PlugIn, ActionListener, DialogListener
 {
 
 	//class used to hold the dialog settings. 
@@ -42,8 +45,8 @@ public class Xray_Lookup_MuLin implements PlugIn, ActionListener, DialogListener
 	String[] matlName,filteredMatlName;
 	String[] matlFormula,filteredMatlFormula;	
 	double[] matlGmPerCC,filteredMatlGmPerCC;
-	String myDialogTitle = "X-Ray Lookup MuLin";
-	String resultsTitle = "KeV MuLin Solutions";
+	String myDialogTitle = "Lookup keV";
+	String resultsTitle = "keV Solutions";
 	int dlogW,dlogH,dlogL,dlogT;
 	boolean isMacro = false;	
 	boolean useTabDensity;
@@ -102,6 +105,10 @@ public class Xray_Lookup_MuLin implements PlugIn, ActionListener, DialogListener
 	
 	//*********************************************************************************/
 	
+	String[] filteredMatlNames;
+	String[] filteredFormulas;
+	double[] filteredGmPerCC;
+
 	public boolean dialogItemChanged(GenericDialog gd, AWTEvent e)
 	{
 		boolean dialogOK = true;
@@ -132,8 +139,40 @@ public class Xray_Lookup_MuLin implements PlugIn, ActionListener, DialogListener
 			{
 				TextField tf = (TextField)src;
 				String name = tf.getName();
+				String filterStr = tf.getText();
+				
 				switch(name)
 				{
+				case "filter":
+					TagSet filteredTagData1 = mlt.filterTagData(tagSet, filterStr);
+					if(filterStr.equals(""))
+					{
+						//copy the original arrays into the filtered arrays
+						filteredMatlNames = matlName;
+						filteredFormulas = matlFormula;
+						filteredGmPerCC =matlGmPerCC;
+					}
+					else
+					{
+						filteredMatlNames = mlt.getTagSetMatlNamesAsArray(filteredTagData1);
+						filteredFormulas = mlt.getTagSetMatlFormulasAsArray(filteredTagData1);
+						filteredGmPerCC =mlt.getTagSetMatlGmPerccAsArray(filteredTagData1);
+					}
+					matlNameCF.getChoice().setVisible(false);
+					matlNameCF.getChoice().removeAll();
+					matlNameCF.setChoices(filteredMatlNames);
+					matlNameCF.getChoice().setVisible(true);
+					if(filteredMatlNames.length>0)
+					{
+						matlNameCF.getChoice().select(0);
+						matlNameSF.getTextField().setText(filteredMatlNames[0]);
+						formulaSF.getTextField().setText(filteredFormulas[0]);
+						if(useTabDensity)
+						{
+							densityNF.setNumber(filteredGmPerCC[0]);
+						}
+					}
+					break;
 				case "formula":
 					if(mmc.getMevArray(tf.getText())==null) dialogOK = false;
 				break;
@@ -159,6 +198,7 @@ public class Xray_Lookup_MuLin implements PlugIn, ActionListener, DialogListener
 	}
 	
 	//*********************************************************************************/
+	StringField filterSF;
 	
 	public void DoDialog()
 	{
@@ -171,9 +211,14 @@ public class Xray_Lookup_MuLin implements PlugIn, ActionListener, DialogListener
 		gd.addMessage("Formula Format: "
 				+ "Atom1:Count1:Atom2:Count2 etc.", myFont);
 		gd.addCheckbox("Import_tabulated_densities", true);
-		gd.addChoice("Material Name Choices", filteredMatlName, filteredMatlName[0]); //myTags.matlName[0] is column header title
+		
+		//First selection block
+		gd.setInsets(5, 0, 0);
+		gd.addStringField("Search Names", "");
+		filterSF = gda.getStringField(gd, null, "filter");
+		
+		gd.addChoice("Material Names", filteredMatlName, filteredMatlName[0]); //myTags.matlName[0] is column header title
 		matlNameCF = gda.getChoiceField(gd, null, "matlNameChoice");
-		matlNameCF.getChoice().addKeyListener(this);
 				
 		gd.addStringField("Material_Name", filteredMatlName[0]);
 		matlNameSF = gda.getStringField(gd, null, "matlName");
@@ -247,8 +292,9 @@ public class Xray_Lookup_MuLin implements PlugIn, ActionListener, DialogListener
 	{
 		gd.resetCounters();
 		try {
+			ds.formulaName = gd.getNextString();//dummy read
+			ds.formulaName = gd.getNextChoice();//dummy read
 			ds.formulaName = gd.getNextString();
-			ds.formulaName = gd.getNextChoice();
 			ds.formula = gd.getNextString();
 			ds.gmPerCC = gd.getNextNumber();
 			ds.attn = gd.getNextNumber();
@@ -268,49 +314,6 @@ public class Xray_Lookup_MuLin implements PlugIn, ActionListener, DialogListener
 		ds.gmPerCC = filteredMatlGmPerCC[0];
 	}
 	
-	//*********************************************************************************/
-	
-	@Override
-	public void keyPressed(KeyEvent e) {
-		//showKeyEvent(e,"keyPressed");
-		int keyCode = e.getKeyCode();
-		Choice matlNamehoice = matlNameCF.getChoice();
-		if(keyCode== 8 || keyCode==127)
-		{
-			filteredMatlName= matlName;
-			filteredMatlFormula=matlFormula;
-			filteredMatlGmPerCC=matlGmPerCC;
-		}
-		else if(keyCode<91 && keyCode>64)
-		{
-			char c = e.getKeyChar();
-			String s = Character.toString(c);		
-			TagSet filteredTagSet = mlt.filterTagData(tagSet, s);
-			filteredMatlName= mlt.getTagSetMatlNamesAsArray(filteredTagSet);
-			filteredMatlFormula=mlt.getTagSetMatlFormulasAsArray(filteredTagSet);
-			filteredMatlGmPerCC=mlt.getTagSetMatlGmPerccAsArray(filteredTagSet);
-		}
-		matlNamehoice.setVisible(false);
-		matlNamehoice.removeAll();
-		matlNameCF.setChoices(filteredMatlName);
-		matlNamehoice.setVisible(true);
-		matlNameSF.getTextField().setText(filteredMatlName[0]);
-		formulaSF.getTextField().setText(filteredMatlFormula[0]);
-		densityNF.setNumber(filteredMatlGmPerCC[0]);		
-	}
-	
-	//*********************************************************************************/	
-
-	@Override
-	public void keyReleased(KeyEvent e) {}
-
-	//*********************************************************************************/
-	
-	@Override
-	public void keyTyped(KeyEvent e) {}
-
-	//*********************************************************************************/
-
 	private ResultsTable prepareResults(double[] result)
 	{
 		String muLinStr = "MuLin cm"+(char)0x207b+(char)0x0b9;
@@ -363,8 +366,14 @@ public class Xray_Lookup_MuLin implements PlugIn, ActionListener, DialogListener
 		//Location of the default materials list
 		String dir = IJ.getDirectory("plugins");
 		String defaultFilePath = dir + "DialogData\\DefaultMaterials.csv";
-		
+//		tagSet = mlt.loadTagFile(defaultFilePath);
+
 		tagSet = mlt.readTagSetFile(defaultFilePath);
+		if(tagSet==null)
+		{
+			IJ.error("Unable to load/create plugins/DialogData/DefaultMaterials.csv");
+			return;
+		}
 		//Get names array from TagSet
 		matlName = new String[tagSet.tagData.size()];
 		matlFormula = new String[tagSet.tagData.size()];
@@ -384,55 +393,8 @@ public class Xray_Lookup_MuLin implements PlugIn, ActionListener, DialogListener
 		DoDialog();
 		DoRoutine();		
 }
-	
-	//*********************************************************************************/
-//	
-//	@SuppressWarnings("deprecation")
-//	private void showKeyEvent(KeyEvent e, String eventType)
-//	{
-//		IJ.log(eventType);
-//		int keyCode = e.getKeyCode();
-//		IJ.log("KeyCode=" + keyCode);
-//
-//		int modifiersEx = e.getModifiersEx();
-//		IJ.log("extended modifiers = " + modifiersEx);
-//		
-//		String keyModifiers = KeyEvent.getKeyModifiersText(modifiersEx);
-//		IJ.log(keyModifiers);
-//
-//		String actionString = "action key? ";
-//		if (e.isActionKey()) actionString += "YES";
-//		else actionString += "NO";       
-//		IJ.log(actionString);
-//
-//		String locationString = "key location: ";      
-//		int location = e.getKeyLocation();
-//		if (location == KeyEvent.KEY_LOCATION_STANDARD) locationString += "standard";
-//		else if (location == KeyEvent.KEY_LOCATION_LEFT) locationString += "left";
-//		else if (location == KeyEvent.KEY_LOCATION_RIGHT) locationString += "right";
-//		else if (location == KeyEvent.KEY_LOCATION_NUMPAD) locationString += "numpad";
-//		else locationString += "unknown";           
-//		IJ.log(locationString);
-//		
-//		IJ.log("*****************************");
-//
-//	}
-//
-	//*********************************************************************************/
-
-//	private boolean ValidateParams()
-//	{
-//		boolean paramsOK = true;
-//		//check the user formulas for validity
-//		if(mmc.getMevArray(ds.formula)==null)
-//		{
-//			IJ.showMessage("Error", ds.formula + " Bad Formula, Element or count missing");
-//			paramsOK = false;
-//		}		
-//		return paramsOK;
-//	}
-	
-	public static boolean isNumeric(String str)
+		
+	private static boolean isNumeric(String str)
 	{ 
 		try
 		{  
@@ -444,6 +406,5 @@ public class Xray_Lookup_MuLin implements PlugIn, ActionListener, DialogListener
 			return false;  
 		}  
 	}
-
 
 }

@@ -17,6 +17,7 @@ import java.awt.*;
 import java.awt.event.*;
 import java.util.*;
 
+import DocumentReader.DocumentReader;
 import ij.plugin.*;
 import ij.text.TextPanel;
 import ij.gui.*;
@@ -24,18 +25,18 @@ import ij.*;
 import ij.measure.*;
 
 import jhd.MuMassCalculator.*;
+import tagTools.TagListTools;
+import tagTools.TagListTools.TagSet;
 import jhd.ImageJAddins.GenericDialogAddin;
 import jhd.ImageJAddins.GenericDialogAddin.*;
 import gray.AtomData.*;
-import tagTools.*;
-import tagTools.TagListTools.TagSet;
 
 
 	public class Xray_Calculator implements PlugIn, ActionListener, DialogListener
 {
 
 	MuMassCalculator mmc= new MuMassCalculator();
-	TagListTools tlt=new TagListTools();
+	TagListTools mlt=new TagListTools();
 	TagSet tagSet;
 	String[] matlName;
 	String[] matlFormula;
@@ -86,21 +87,21 @@ import tagTools.TagListTools.TagSet;
 		String dir = IJ.getDirectory("plugins");
 		String defaultFilePath = dir + "DialogData\\DefaultMaterials.csv";
 		
-		tagSet = tlt.readTagSetFile(defaultFilePath);
-		
-		if(tagSet==null) {
-			IJ.log("Error reading " + defaultFilePath);
+		//tagSet = mlt.loadTagFile(defaultFilePath);
+		tagSet = mlt.readTagSetFile(defaultFilePath);
+		if(tagSet==null)
+		{
+			IJ.error("Unable to load/create plugins/DialogData/DefaultMaterials.csv");
 			return;
 		}
-
-		//Get arrays from TagSet
-		matlName = tlt.getTagSetMatlNamesAsArray(tagSet);
-		matlFormula = tlt.getTagSetMatlFormulasAsArray(tagSet);
-		matlGmPerCC = tlt.getTagSetMatlGmPerccAsArray(tagSet);		
+		matlName = mlt.getTagSetMatlNamesAsArray(tagSet);
+		matlFormula = mlt.getTagSetMatlFormulasAsArray(tagSet);
+		matlGmPerCC = mlt.getTagSetMatlGmPerccAsArray(tagSet);
 		
 		filteredMatlName=matlName;
 		filteredMatlFormula=matlFormula;
 		filteredMatlGmPerCC=matlGmPerCC;
+
 
 		DoDialog();
 		DoRoutine();		
@@ -189,26 +190,6 @@ import tagTools.TagListTools.TagSet;
 	}
 
 	//*********************************************************************************/
-	
-	private boolean ValidateParams()
-	{
-		boolean paramsOK = true;
-		double[] mevList = mmc.getMevArray(ds.formula);
-		if(mevList==null)
-		{
-			IJ.showMessage("Error", ds.formula + " Bad Formula, Element or count missing");
-			paramsOK = false;
-		}
-		if(ds.meV < 0.001 || ds.meV > 100000)
-		{
-			IJ.showMessage("Error:  keV Out of range  1 < keV < 100,000,000");
-			paramsOK = false;
-		}		
-		return paramsOK;		
-	}
-
-	//*********************************************************************************/
-	
 
 	private void getSelections()
 	{
@@ -291,7 +272,6 @@ import tagTools.TagListTools.TagSet;
 		switch(cmd)
 		{
 		case "Calculate":
-			if (ValidateParams())
 				UpdateResults();
 			break;
 		}
@@ -305,6 +285,7 @@ import tagTools.TagListTools.TagSet;
 
 		if(e!=null)
 		{
+			getSelections();
 			Object src = e.getSource();			
 			if(src instanceof Choice)
 			{
@@ -331,7 +312,7 @@ import tagTools.TagListTools.TagSet;
 				switch(name)
 				{
 				case "filter":
-					TagSet filteredTagData = tlt.filterTagData(tagSet, filterStr);
+					TagSet filteredTagData = mlt.filterTagData(tagSet, filterStr);
 					if(filterStr.equals(""))
 					{
 						//copy the original arrays into the filtered arrays
@@ -341,9 +322,9 @@ import tagTools.TagListTools.TagSet;
 					}
 					else
 					{
-						filteredMatlName = tlt.getTagSetMatlNamesAsArray(filteredTagData);
-						filteredMatlFormula = tlt.getTagSetMatlFormulasAsArray(filteredTagData);
-						filteredMatlGmPerCC =tlt.getTagSetMatlGmPerccAsArray(filteredTagData);
+						filteredMatlName = mlt.getTagSetMatlNamesAsArray(filteredTagData);
+						filteredMatlFormula = mlt.getTagSetMatlFormulasAsArray(filteredTagData);
+						filteredMatlGmPerCC =mlt.getTagSetMatlGmPerccAsArray(filteredTagData);
 					}
 					matlNameCF.getChoice().setVisible(false);
 					matlNameCF.getChoice().removeAll();
@@ -396,7 +377,7 @@ import tagTools.TagListTools.TagSet;
 	}
 	
 	public static boolean isNumeric(String str)
-	{ 
+	{ 		
 		try
 		{  
 			Double.parseDouble(str);  

@@ -25,7 +25,6 @@ public class Show_Sample_Image implements PlugIn {
 				"Shepp-Logan Phantom256.tif","Shepp-Logan Phantom256_TagImage.tif"};
 		
         try {
-            @SuppressWarnings("deprecation")
 			URL url = new URL("https://github.com/");
             URLConnection connection = url.openConnection();
             connection.connect();
