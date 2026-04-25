@@ -21,7 +21,7 @@ package CT_Tools;
 import java.awt.*;
 import java.awt.event.*;
 
-import DocumentReader.DocumentReader;
+//import DocumentReader.DocumentReader;
 import ij.plugin.*;
 import ij.text.TextPanel;
 import ij.gui.*;

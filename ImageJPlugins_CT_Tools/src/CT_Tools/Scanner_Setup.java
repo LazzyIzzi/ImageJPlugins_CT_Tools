@@ -6,7 +6,7 @@ import java.io.File;
 import java.util.Arrays;
 //import java.util.Vector;
 
-import DocumentReader.DocumentReader;
+//import DocumentReader.DocumentReader;
 import ij.*;
 import ij.plugin.*;
 import ij.text.TextPanel;
@@ -348,7 +348,7 @@ public class Scanner_Setup implements PlugIn, DialogListener, ActionListener
 		gd.setInsets(10,0,0);
 		gd.addMessage("Plot Spectra______________",myFont,Color.BLACK);
 		gd.setInsets(0,50,0);
-		String[] labels = {"Source","Filtered","Sample","Filtered(Io)","Detected(I)"};
+		String[] labels = {"Source","Filtered","Sampled","Filtered(Io)","Detected(I)"};
 		boolean[] states = {true,true,true,true,true};
 		gd.addCheckboxGroup(2, 3, labels, states);		
 

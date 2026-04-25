@@ -41,7 +41,7 @@ public class About_DFI_Info implements PlugIn {
 				+ "ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\r\n"
 				+ "(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS\r\n"
 				+ "SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.";
-		String license = dfiTxt + txt; //new JTransformsUtilsDFI().getJTransformsLicenseDFI();
+		String license = dfiTxt + txt;
 		GenericDialog gd = new GenericDialog("JTransforms License");
 		gd.addMessage(license, myFont);
 		gd.setBackground(myColor);

@@ -2,7 +2,7 @@ package CT_Tools;
 
 import java.awt.Color;
 import java.awt.Font;
-import DocumentReader.*;
+//import DocumentReader.*;
 import ij.gui.GUI;
 import ij.gui.GenericDialog;
 import ij.plugin.PlugIn;
