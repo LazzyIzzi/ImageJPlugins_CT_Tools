@@ -107,7 +107,7 @@ public class DFI_JTransforms implements ActionListener, PlugInFilter {
 		gd.addSlider("Extension Width:", 0, 100, 0, 0);
 		gd.addSlider("Axis Shift:", -5, 5, 0, .1);
 		gd.addCheckbox("Show_run_time", false);
-		gd.addCheckbox("Show_ROI", true);
+		gd.addCheckbox("Show_ROI", false);
 		gd.addButton("Reconstruct Test Slice", this);
 		reconSliceBF = gda.getButtonField(gd, "reconSliceBtn");
 		gd.setBackground(myColor);

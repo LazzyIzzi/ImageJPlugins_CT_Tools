@@ -1,6 +1,6 @@
 /**
  * 
-CT_Tools is a suite of plugins for routing X-ray calculations
+CT_Tools is a suite of plugins for routine X-ray calculations
 Calculators<br>
 Linear Attenuation - Calculates MuLin using formula, density, and keV<br>
 Spectrum Plotter - Plots MuMass NIST data for a formula vs keV<br>

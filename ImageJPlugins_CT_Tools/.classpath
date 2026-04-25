@@ -8,7 +8,11 @@
 	<classpathentry kind="src" path="src"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/ImageJProject"/>
 	<classpathentry exported="true" kind="lib" path="C:/Users/snagg/New-workspace/CustomLibraries/ImageJAddins.jar"/>
-	<classpathentry exported="true" kind="lib" path="C:/Users/snagg/New-workspace/CustomLibraries/JTransforms-3.1-with-dependencies.jar"/>
+	<classpathentry exported="true" kind="lib" path="C:/Users/snagg/New-workspace/CustomLibraries/JTransforms-3.1-with-dependencies.jar" sourcepath="C:/Users/snagg/New-workspace/CustomLibraries/JTransforms-3.1-sources.jar">
+		<attributes>
+			<attribute name="javadoc_location" value="jar:file:/C:/Users/snagg/New-workspace/CustomLibraries/JTransforms-3.2-javadoc.jar!/"/>
+		</attributes>
+	</classpathentry>
 	<classpathentry kind="lib" path="C:/Users/snagg/New-workspace/CustomLibraries/MuMassCalculatorJava8Lib.jar" sourcepath="/JHD_XRAY-MassAttenuationLibJ8V5"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

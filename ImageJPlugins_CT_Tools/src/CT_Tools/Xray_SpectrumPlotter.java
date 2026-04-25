@@ -34,7 +34,7 @@ import java.awt.event.ActionListener;
 import java.util.ArrayList;
 //import java.util.Vector;
 
-import DocumentReader.DocumentReader;
+//import DocumentReader.DocumentReader;
 import gray.AtomData.AtomData;
 import ij.IJ;
 import ij.ImagePlus;
@@ -105,7 +105,7 @@ public class Xray_SpectrumPlotter implements PlugIn, DialogListener, ActionListe
 
 	String myDialogTitle = "Mu Mass Spectrum";
 	// For the plots
-	String plotTitle = "Mass Attenuation";
+	String plotTitle = "Mass Attenuation";//default
 	PlotWindow gPlotWindow;
 	final int plotW = 625, plotH = 350, resultW = 650, resultH = 160;
 	final Color buff = new Color(250, 240, 200);
@@ -229,6 +229,7 @@ public class Xray_SpectrumPlotter implements PlugIn, DialogListener, ActionListe
 				}
 			}
 		}
+		getSelections();
 		return dialogOK;
 	}
 
@@ -266,7 +267,10 @@ public class Xray_SpectrumPlotter implements PlugIn, DialogListener, ActionListe
 		lineColors[5] = Color.magenta;
 
 		DoDialog();
-		DoRoutine();
+		if(gd.wasOKed()) {
+			getSelections();
+			DoRoutine();			
+		}
 	}
 
 	private void DoDialog() {
@@ -501,6 +505,7 @@ public class Xray_SpectrumPlotter implements PlugIn, DialogListener, ActionListe
 					muMass[j][i] *= scale;
 				}
 			}
+			plotTitle = "LinearAttenuation";
 		}
 		newPlot = new Plot(plotTitle, "keV", muUnit);
 		newPlot.setFont(Font.BOLD, 16);
