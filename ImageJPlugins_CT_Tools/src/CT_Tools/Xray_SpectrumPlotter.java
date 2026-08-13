@@ -486,6 +486,10 @@ public class Xray_SpectrumPlotter implements PlugIn, DialogListener, ActionListe
 			if (ds.muMassSelections[i]) {
 				for (j = 0; j < meVArr.length; j++) {
 					muMass[cnt][j] = mmc.getMuMass(ds.formula, meVArr[j], mmTypes[i]);
+					//ignore zeros for log plots
+					if(muMass[cnt][j]<=0) {
+						muMass[cnt][j]=Double.NaN;
+					}
 				}
 				legend += mmTypes[i] + "\t";
 				cnt++;
