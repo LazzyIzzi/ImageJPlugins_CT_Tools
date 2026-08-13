@@ -1,6 +1,12 @@
 package CT_Tools;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 
 //import org.jtransforms.fft.FloatFFT_1D;
 
@@ -23,13 +29,30 @@ public class JTransformsUtils {
 	
 	public boolean JtransformsJarPresent() {
 		boolean result = false;
-		String jtFilePath = IJ.getDirectory("plugins") + "JTransforms-3.1-with-dependencies.jar";
-		File jtFile = new File(jtFilePath);
-		if (jtFile.exists()) {
-			result = true;
+//		String jtFilePath = IJ.getDirectory("plugins") + "JTransforms-3.1-with-dependencies.jar";
+//		File jtFile = new File(jtFilePath);
+//		if (jtFile.exists()) {
+//			result = true;
+//		}
+		
+			List<Path> fileList = new ArrayList<>();
+			String dir = IJ.getDirectory("plugins");
+			String jarName = "JTransforms-3.1-with-dependencies.jar";
+			try {
+				Files.walk(Paths.get(dir)).filter(Files::isRegularFile).forEach(fileList::add);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+					
+			for (int i = 0; i < fileList.size(); i++) {
+				if (fileList.get(i).toString().contains(jarName)) {
+					result = true;
+					break;
+				}
+			}
+			return result;
 		}
-		return result;
-	}
+
 	
 	public String getJtransformsJarErrorMsg() {
 		String msg = "Please download JTransforms-3.1-with-dependencies.jar\n"

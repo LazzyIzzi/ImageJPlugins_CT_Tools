@@ -312,7 +312,7 @@ public class Xray_SpectrumPlotter implements PlugIn, DialogListener, ActionListe
 		gd.addNumericField("Max keV", 100000000, 12);
 		maxKeVNF = gda.getNumericField(gd, null, "maxKeV");
 		gd.addCheckbox("Plot_keV Log scale", true);
-		gd.addCheckbox("Plot_cm2/gm on Log scale", true);
+		gd.addCheckbox("Plot_Attenuation on Log scale", true);
 		gd.addCheckbox("List absorption edge energies", false);
 		gd.addMessage("Cross-section", myFont);
 		String[] muMassTypes = mmc.getMuMassTypes();
