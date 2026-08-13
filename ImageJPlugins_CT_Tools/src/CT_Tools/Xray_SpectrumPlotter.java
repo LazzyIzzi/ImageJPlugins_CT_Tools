@@ -143,6 +143,7 @@ public class Xray_SpectrumPlotter implements PlugIn, DialogListener, ActionListe
 				int index = matlNameCF.getChoice().getSelectedIndex();
 				formulaSF.getTextField().setText(filteredFormulas[index]);
 				matlNameSF.getTextField().setText(filteredMatlNames[index]);
+				gmPerCCNF.setNumber(filteredGmPerCC[index]);
 				ds.formulaName = filteredMatlNames[index];
 				ds.formula = filteredFormulas[index];
 				ds.gmPerCC = filteredGmPerCC[index];
@@ -252,6 +253,10 @@ public class Xray_SpectrumPlotter implements PlugIn, DialogListener, ActionListe
 		matlNames = mlt.getTagSetMatlNamesAsArray(tagSet);
 		matlFormulas = mlt.getTagSetMatlFormulasAsArray(tagSet);
 		matlGmPerCC = mlt.getTagSetMatlGmPerccAsArray(tagSet);
+
+		filteredMatlNames = matlNames;
+		filteredFormulas = matlFormulas;
+		filteredGmPerCC = matlGmPerCC;
 
 		// Allocate array for muMass type checkBoxes, see getSelections()
 		ds.muMassSelections = new boolean[mmc.getMuMassTypes().length];

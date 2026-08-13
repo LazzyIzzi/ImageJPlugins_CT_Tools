@@ -35,6 +35,7 @@ public class JTransformsUtils {
 		String msg = "Please download JTransforms-3.1-with-dependencies.jar\n"
 				+ "to the ImageJ/plugins folder and restart ImageJ\n"
 				+ "https://github.com/wendykierp/JTransforms.";
+		//To download JTransforms 3.1 click <a href="https://repo1.maven.org/maven2/com/github/wendykierp/JTransforms/3.1/JTransforms-3.1-with-dependencies.jar" download="JTransforms-3.1-with-dependencies.jar">here</a>.</li>
 		return msg;
 	}
 
