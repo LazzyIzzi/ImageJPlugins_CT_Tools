@@ -1,16 +1,26 @@
 package CT_Tools;
 
-import java.io.File;
+//import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
+//import java.nio.file.Files;
+//import java.nio.file.Path;
+//import java.nio.file.Paths;
+//import java.util.ArrayList;
+//import java.util.List;
+
+import java.awt.Color;
+import java.awt.Font;
+
 
 //import org.jtransforms.fft.FloatFFT_1D;
 
 import ij.IJ;
+import ij.gui.GenericDialog;
+
+import java.net.URL;
+import java.net.URLConnection;
+
+//import org.jtransforms.fft.DoubleFFT_1D;
 
 /**
  * A set of methods to convert complex data to and from JTransforms 1D sequenced
@@ -27,40 +37,106 @@ import ij.IJ;
  */
 public class JTransformsUtils {
 	
-	public boolean JtransformsJarPresent() {
-		boolean result = false;
-//		String jtFilePath = IJ.getDirectory("plugins") + "JTransforms-3.1-with-dependencies.jar";
-//		File jtFile = new File(jtFilePath);
-//		if (jtFile.exists()) {
-//			result = true;
-//		}
-		
-			List<Path> fileList = new ArrayList<>();
-			String dir = IJ.getDirectory("plugins");
-			String jarName = "JTransforms-3.1-with-dependencies.jar";
-			try {
-				Files.walk(Paths.get(dir)).filter(Files::isRegularFile).forEach(fileList::add);
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-					
-			for (int i = 0; i < fileList.size(); i++) {
-				if (fileList.get(i).toString().contains(jarName)) {
-					result = true;
-					break;
-				}
-			}
-			return result;
-		}
 
 	
-	public String getJtransformsJarErrorMsg() {
-		String msg = "Please download JTransforms-3.1-with-dependencies.jar\n"
-				+ "to the ImageJ/plugins folder and restart ImageJ\n"
-				+ "https://github.com/wendykierp/JTransforms.";
-		//To download JTransforms 3.1 click <a href="https://repo1.maven.org/maven2/com/github/wendykierp/JTransforms/3.1/JTransforms-3.1-with-dependencies.jar" download="JTransforms-3.1-with-dependencies.jar">here</a>.</li>
-		return msg;
+	public boolean JtransformsJarPresent() {
+		boolean result = false;
+		
+	    try {
+	        Class.forName("org.jtransforms.fft.DoubleFFT_1D");
+	        result= true;
+		    //IJ.log("JTransforms found");
+
+	    } catch (ClassNotFoundException | LinkageError e) {
+	    	result =  false;
+		    //IJ.log("JTransforms not found");
+	    }
+
+// 		JTransforms version was unavailable in package metadata	
+//        try {
+//			Package pkg = DoubleFFT_1D.class.getPackage();
+//
+//			String version = pkg.getImplementationVersion();
+//
+//			if (version == null) {
+//			    IJ.log("JTransforms version is unavailable in package metadata");
+//			} else {
+//			    IJ.log("JTransforms version: " + version);
+//			}
+//		} catch (Exception e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
+//    
+//		The version is in the jar name 
+//		List<Path> fileList = new ArrayList<>();
+//		String dir = IJ.getDirectory("plugins");
+//		String jarName = "JTransforms-3.1-with-dependencies.jar";
+//		try {
+//			Files.walk(Paths.get(dir)).filter(Files::isRegularFile).forEach(fileList::add);
+//		} catch (IOException e) {
+//			e.printStackTrace();
+//		}
+//
+//		for (int i = 0; i < fileList.size(); i++) {
+//			if (fileList.get(i).toString().contains(jarName)) {
+//				result = true;
+//				break;
+//			}
+//		}
+		return result;
 	}
+	
+	public boolean install_JTransforms() {
+		boolean installed = false;
+		final Color myColor = new Color(240, 230, 190, 255);
+		Font myFont = new Font(Font.DIALOG, Font.BOLD, 12);
+		String jtJar = "https://repo1.maven.org/maven2/com/github/wendykierp/JTransforms/3.1/JTransforms-3.1-with-dependencies.jar";
+
+		GenericDialog gd = new GenericDialog("Install JTransforms Library");
+		gd.addMessage("DFI_JTransforms requires the FFT library\n"
+				+ " \"JTransforms-3.1-with-dependencies.jar\"", myFont);
+		gd.addMessage("Click \"Auto\" to install it automatically.\n"
+				+ "Click \"Manual\" for manual installation instructions.", myFont);
+		gd.addMessage("An internet connection is required.", myFont);
+		gd.setOKLabel("Auto");
+		gd.setCancelLabel("Manual");
+		gd.setBackground(myColor);
+		gd.setIconImage(new ResourceReader().readImageFile("LazzyIzzi-32.png"));
+		gd.showDialog();
+		if (gd.wasOKed()) {
+			//test if we have an internet connection
+			try {
+				URL url = new URL("https://repo1.maven.org");
+				URLConnection connection = url.openConnection();
+				connection.connect();
+			} catch (IOException e) {
+				IJ.error("This plugin failed to connect to https://repo1.maven.org");
+				return installed;
+			}
+			// install JTransforms-3.1-with-dependencies.jar
+			IJ.open(jtJar);
+			installed = true;			
+		}
+		if(gd.wasCanceled()) {
+			String jtLink = "https://repo1.maven.org/maven2/com/github/wendykierp/JTransforms/3.1/";
+			IJ.log("For cautious users, an alternative JTransforms Installation:");
+			IJ.log("1.Copy the link below and paste in your browser's Address bar");
+			IJ.log(jtLink);
+			IJ.log("2.Locate and download \"JTransforms-3.1-with-dependencies.jar\" to the ImageJ plugins/jars folder.");
+			IJ.log("3.Restart ImageJ.");
+		}
+		return installed;		
+	}
+
+	
+//	public String getJtransformsJarErrorMsg() {
+//		String msg = "Please download JTransforms-3.1-with-dependencies.jar\n"
+//				+ "to the ImageJ/plugins folder and restart ImageJ\n"
+//				+ "https://github.com/wendykierp/JTransforms.";
+//		//To download JTransforms 3.1 click <a href="https://repo1.maven.org/maven2/com/github/wendykierp/JTransforms/3.1/JTransforms-3.1-with-dependencies.jar" download="JTransforms-3.1-with-dependencies.jar">here</a>.</li>
+//		return msg;
+//	}
 
 	/**
 	 * Extracts the imaginary part of 1D JTransform sequenced data

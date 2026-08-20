@@ -204,8 +204,8 @@ public class TagListTools {
 		TagSet tagSet = null;
 		Path thePath = Paths.get(path);
 		//Path thePath = Path.of(path);
-		byte[] bytes = null;
-		Path resourcePath = null;
+		//byte[] bytes = null;
+		//Path resourcePath = null;
 		
 		//if DefaultMaterials.csv is not present in the plugins/DialogData folder
 		//Create a new copy from the resources
