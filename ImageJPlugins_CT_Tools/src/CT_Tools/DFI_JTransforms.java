@@ -66,35 +66,44 @@ public class DFI_JTransforms implements ActionListener, PlugInFilter {
 
 	@Override
 	public void run(ImageProcessor ip) {
-		if(!jtu.JtransformsJarPresent()) {
-			IJ.error(jtu.getJtransformsJarErrorMsg());
-			return;
-		}
-		
-		DialogParams dlp = DoDFIdialog();
+		//if the JTransforms library is installed run the recon
+		if (jtu.JtransformsJarPresent()) {
 
-		if (dlp != null) {
-			// Close the test image if present
-			ImagePlus testImp = WindowManager.getImage("TestSlice");
-			if (testImp != null) {
-				testImp.close();
-			}
+			DialogParams dlp = DoDFIdialog();
 
-			ImagePlus reconImp = DoDFIrecon(dlp);
-			reconImp.show();
-			if (dlp.showReconROI == true) {
-				int sinoW = dlp.sinoImp.getWidth();
-				int x = (reconImp.getWidth() - sinoW) / 2;
-				int y = (reconImp.getHeight() - sinoW) / 2;
-				reconImp.setRoi(new OvalRoi(x, y, sinoW, sinoW));
+			if (dlp != null) {
+				// Close the test image if present
+				ImagePlus testImp = WindowManager.getImage("TestSlice");
+				if (testImp != null) {
+					testImp.close();
+				}
+
+				ImagePlus reconImp = DoDFIrecon(dlp);
+				reconImp.show();
+				if (dlp.showReconROI == true) {
+					int sinoW = dlp.sinoImp.getWidth();
+					int x = (reconImp.getWidth() - sinoW) / 2;
+					int y = (reconImp.getHeight() - sinoW) / 2;
+					reconImp.setRoi(new OvalRoi(x, y, sinoW, sinoW));
+				}
+				ContrastEnhancer ce = new ContrastEnhancer();
+				ce.stretchHistogram(reconImp, 0.35);
+				reconImp.updateAndDraw();
+			} else {
+				//IJ.error("Dialog Error", "Dialog failed to return selections");
+				return;
 			}
-			ContrastEnhancer ce = new ContrastEnhancer();
-			ce.stretchHistogram(reconImp, 0.35);
-			reconImp.updateAndDraw();
-		} else {
-			return;
+		} else {//if the JTransforms library is not installed, install it
+			if (jtu.install_JTransforms() == false) {
+				IJ.showMessage("JTransforms installation failed or was Cancelled");
+				return;
+			} else {
+				IJ.showMessage("JTransforms installed successfully");
+				return;
+			}
 		}
 	}
+	
 
 	private DialogParams DoDFIdialog() {
 		GenericDialogAddin gda = new GenericDialogAddin();

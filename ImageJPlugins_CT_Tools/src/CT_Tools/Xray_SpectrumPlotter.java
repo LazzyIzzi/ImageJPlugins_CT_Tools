@@ -143,6 +143,7 @@ public class Xray_SpectrumPlotter implements PlugIn, DialogListener, ActionListe
 				int index = matlNameCF.getChoice().getSelectedIndex();
 				formulaSF.getTextField().setText(filteredFormulas[index]);
 				matlNameSF.getTextField().setText(filteredMatlNames[index]);
+				gmPerCCNF.setNumber(filteredGmPerCC[index]);
 				ds.formulaName = filteredMatlNames[index];
 				ds.formula = filteredFormulas[index];
 				ds.gmPerCC = filteredGmPerCC[index];
@@ -253,6 +254,10 @@ public class Xray_SpectrumPlotter implements PlugIn, DialogListener, ActionListe
 		matlFormulas = mlt.getTagSetMatlFormulasAsArray(tagSet);
 		matlGmPerCC = mlt.getTagSetMatlGmPerccAsArray(tagSet);
 
+		filteredMatlNames = matlNames;
+		filteredFormulas = matlFormulas;
+		filteredGmPerCC = matlGmPerCC;
+
 		// Allocate array for muMass type checkBoxes, see getSelections()
 		ds.muMassSelections = new boolean[mmc.getMuMassTypes().length];
 		mmTypes = mmc.getMuMassTypes();
@@ -307,7 +312,7 @@ public class Xray_SpectrumPlotter implements PlugIn, DialogListener, ActionListe
 		gd.addNumericField("Max keV", 100000000, 12);
 		maxKeVNF = gda.getNumericField(gd, null, "maxKeV");
 		gd.addCheckbox("Plot_keV Log scale", true);
-		gd.addCheckbox("Plot_cm2/gm on Log scale", true);
+		gd.addCheckbox("Plot_Attenuation on Log scale", true);
 		gd.addCheckbox("List absorption edge energies", false);
 		gd.addMessage("Cross-section", myFont);
 		String[] muMassTypes = mmc.getMuMassTypes();
@@ -481,6 +486,10 @@ public class Xray_SpectrumPlotter implements PlugIn, DialogListener, ActionListe
 			if (ds.muMassSelections[i]) {
 				for (j = 0; j < meVArr.length; j++) {
 					muMass[cnt][j] = mmc.getMuMass(ds.formula, meVArr[j], mmTypes[i]);
+					//ignore zeros for log plots
+					if(muMass[cnt][j]<=0) {
+						muMass[cnt][j]=Double.NaN;
+					}
 				}
 				legend += mmTypes[i] + "\t";
 				cnt++;
