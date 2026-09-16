@@ -14,11 +14,11 @@ import tagTools.TagListTools.*;
 /**Applies tag properties to images*/
 public class TagListImageTools {
 
+	TagListTools mt = new TagListTools();
+	MuMassCalculator mmc = new MuMassCalculator();
 	public TagListImageTools() {
 		// TODO Auto-generated constructor stub
 	}
-	TagListTools mt = new TagListTools();
-	MuMassCalculator mmc = new MuMassCalculator();
 	
 	/**Scans an float image for unique pixel tag values
 	 * @param imageData
@@ -188,6 +188,72 @@ public class TagListImageTools {
 			}
 		}
 		return true;
+	}
+	
+	/**Converts a tag image to linear attenuation at a selected energy	 * 
+	 * @param tagData a 1D array of a tag image
+	 * @param tagSet    a class contain tagID, Name, Formula and density
+	 * @param keV       the x-ray energy
+	 * @return linear attenuation image, null if failed.
+	 */
+	public float[] tagsToLinearAttn2(float[] tagData, TagSet tagSet, double keV) {
+		float[] attnData = new float[tagData.length];
+		// tagsToMuLin(pixels,myTags,keV);
+		int[] tagArr = getUniqueTags(tagData);
+
+		// check if tagArr is bigger than the tagList
+		// if it is, it is probably not a tag image
+		if (tagArr.length > tagSet.tagData.size()) {
+			JOptionPane.showMessageDialog(null, "There are more tags in the input image than\n" + "there are tags in the materials list.");
+			return null;
+		}
+
+		// Find the position of each tag in the TagData list
+		int[] tagIndex = new int[tagArr.length];
+		for (int j = 0; j < tagArr.length; j++) {
+			tagIndex[j] = -1;// -1 indicates a match was not found, zero is a valid tag index
+			int i = 0;
+			for (TagData td : tagSet.tagData) {
+				if (tagArr[j] == td.matlTag) {
+					tagIndex[j] = i;
+				}
+				i++;
+			}
+		}
+
+		// Get biggest matlTag
+		int maxTag = Integer.MIN_VALUE;
+		for (int i = 0; i < tagArr.length; i++) {
+			if (tagArr[i] > maxTag)
+				maxTag = tagArr[i];
+		}
+
+		// Create an array to hold the muMass values
+		float[] muMassArr = new float[maxTag + 1];
+
+		// Set the muMass values for each tag
+		for (int i = 0; i < tagIndex.length; i++) {
+			if (tagIndex[i] >= 0) {
+				String formula = tagSet.tagData.get(tagIndex[i]).matlFormula;
+				double gmPerCC = tagSet.tagData.get(tagIndex[i]).matlGmPerCC;
+				double muLin = mmc.getMuMass(formula, keV / 1000, "TotAttn") * gmPerCC;
+				//mmc.getFormulaWeight(formula);
+				muMassArr[tagArr[i]] = (float) muLin;
+				// System.out.println("formula="+ formula+", gmPerCC =" + gmPerCC + ",
+				// muLin="+muLin);
+			} else {
+				JOptionPane.showMessageDialog(null, "Tag " + tagArr[i] + " was not found in the materials list");
+			}
+		}
+
+		for (int i = 0; i < tagData.length; i++) {
+			try {
+				attnData[i] = muMassArr[(int) tagData[i]];
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+		return attnData;
 	}
 
 }

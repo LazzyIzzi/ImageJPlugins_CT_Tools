@@ -19,7 +19,7 @@ import tagTools.TagListTools.TagSet;
  * given X-ray energy from a tag image.
  * TODO replace with simple macro.
  */
-public class Linear_Attenuation_Error implements PlugIn {
+public class Linear_Attenuation_Error_Old implements PlugIn {
 
 	GenericDialog gd;
 	MuMassCalculator mmc = new MuMassCalculator();
