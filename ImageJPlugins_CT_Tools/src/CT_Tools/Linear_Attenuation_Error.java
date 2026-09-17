@@ -33,7 +33,7 @@ import tagTools.TagListTools.TagSet;
  * a reconstructed slice and a model slice calculated at a <br>
  * given X-ray energy from a tag image.
  */
-public class Linear_Attenuation_Error_New implements PlugIn, DialogListener {
+public class Linear_Attenuation_Error implements PlugIn, DialogListener {
 
 	final Color myColor = new Color(240, 230, 190);// slightly darker than buff
 	final Font myFont = new Font(Font.DIALOG, Font.BOLD, 12);
