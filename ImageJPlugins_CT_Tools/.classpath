@@ -13,6 +13,6 @@
 			<attribute name="javadoc_location" value="jar:file:/C:/Users/snagg/New-workspace/CustomLibraries/JTransforms-3.2-javadoc.jar!/"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="lib" path="C:/Users/snagg/New-workspace/CustomLibraries/MuMassCalculatorJava8Lib.jar" sourcepath="/JHD_XRAY-MassAttenuationLibJ8V5"/>
+	<classpathentry kind="lib" path="C:/Users/snagg/New-workspace/CustomLibraries/MassAttenuation_2.0.0.jar" sourcepath="/JHD_XRAY-MassAttenuationLibJ8V5"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

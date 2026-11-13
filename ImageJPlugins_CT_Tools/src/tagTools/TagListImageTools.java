@@ -7,15 +7,16 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 
+import jhd.MuMass.XrayCalculator;
 //import ij.IJ;
-import jhd.MuMassCalculator.MuMassCalculator;
+//import jhd.MuMassCalculator.MuMassCalculator;
 import tagTools.TagListTools.*;
 
 /**Applies tag properties to images*/
 public class TagListImageTools {
 
 	TagListTools mt = new TagListTools();
-	MuMassCalculator mmc = new MuMassCalculator();
+	XrayCalculator xrc = new XrayCalculator();
 	public TagListImageTools() {
 		// TODO Auto-generated constructor stub
 	}
@@ -109,7 +110,7 @@ public class TagListImageTools {
 				formula = formulaLUT[(int) tagImagePixels[i]];
 				gmPerCC = gmPerCcLUT[(int) tagImagePixels[i]];
 				if (formula != null) {
-					effArr = mmc.getMeVfromMuLin(formula, dataImagePixels[i], gmPerCC, "TotAttn");
+					effArr = xrc.getMeVfromMuLin(formula, dataImagePixels[i], gmPerCC, "TotAttn");
 					// take the first effective energy solution.
 					// This may cause issues if absorption edges are present near the effective
 					// energy
@@ -170,8 +171,8 @@ public class TagListImageTools {
 			if (tagIndex[i] >= 0) {
 				String formula = tagSet.tagData.get(tagIndex[i]).matlFormula;
 				double gmPerCC = tagSet.tagData.get(tagIndex[i]).matlGmPerCC;
-				double muLin = mmc.getMuMass(formula, keV / 1000, "TotAttn") * gmPerCC;
-				mmc.getFormulaWeight(formula);
+				double muLin = xrc.getFormulaMuMass(formula, keV / 1000, "TotAttn") * gmPerCC;
+				xrc.getFormulaWeight(formula);
 				muMassArr[tagArr[i]] = (float) muLin;
 				// System.out.println("formula="+ formula+", gmPerCC =" + gmPerCC + ",
 				// muLin="+muLin);
@@ -236,7 +237,7 @@ public class TagListImageTools {
 			if (tagIndex[i] >= 0) {
 				String formula = tagSet.tagData.get(tagIndex[i]).matlFormula;
 				double gmPerCC = tagSet.tagData.get(tagIndex[i]).matlGmPerCC;
-				double muLin = mmc.getMuMass(formula, keV / 1000, "TotAttn") * gmPerCC;
+				double muLin = xrc.getFormulaMuMass(formula, keV / 1000, "TotAttn") * gmPerCC;
 				//mmc.getFormulaWeight(formula);
 				muMassArr[tagArr[i]] = (float) muLin;
 				// System.out.println("formula="+ formula+", gmPerCC =" + gmPerCC + ",
