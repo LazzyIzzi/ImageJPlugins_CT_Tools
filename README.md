@@ -15,7 +15,7 @@ The plugins in this folder create a virtual microCT scanner. A full description 
 
 Caveats: The virtual scanners do not model noise.  The detector in the virtual scanner reports absorbed counts based only on the detector material and thickness. Real detectors are much more complicated.
 
-Dependencies:  MuMassCalculatorJava8Lib, GenericDialogAddins.
+Dependencies:  MassAttenuation_2.0.0, GenericDialogAddins.
 
 <a href="https://github.com/LazzyIzzi/ImageJPlugins_CT_Tools/releases" target="_blank"> CT_ToolsBundle_Java8.jar</a>
 contains all you need to create a virtual CT lab.
