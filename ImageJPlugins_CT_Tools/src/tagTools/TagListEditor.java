@@ -17,10 +17,10 @@ import javax.swing.event.TableModelListener;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 
-import CT_Tools.ResourceReader;
 import ij.IJ;
 import ij.WindowManager;
-import jhd.MuMassCalculator.MuMassCalculator;
+import jhd.CT_Tools.ResourceReader;
+import jhd.MuMass.XrayCalculator;
 import tagTools.TagListTools.*;
 
 public class TagListEditor{
@@ -28,7 +28,7 @@ public class TagListEditor{
 	static Color myColor = new Color(240, 230, 190);// slightly darker than buff
 	Font myFont = new Font("Tahoma", Font.BOLD, 12);
 	String helpURL = "https://lazzyizzi.github.io/CT_ReconPages/MaterialsEditor.html";	
-	MuMassCalculator mmc = new MuMassCalculator();
+	XrayCalculator xrc = new XrayCalculator();
 	TagListTools mlt = new TagListTools();
 	
 	public TagListEditor() {
@@ -182,7 +182,7 @@ public class TagListEditor{
 										"Table Data Changed", JOptionPane.INFORMATION_MESSAGE);
 								btnSave.setEnabled(false);
 							} else {
-								double formulaWeight = mmc.getFormulaWeight(str);
+								double formulaWeight = xrc.getFormulaWeight(str);
 								if (formulaWeight == -1) {
 									JOptionPane.showMessageDialog(myJFrame,
 											" " + newValue + " Is not a valid X:1:Y:1 formula", "Table Data Changed",

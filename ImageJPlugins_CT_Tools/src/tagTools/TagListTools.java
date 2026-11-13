@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import javax.swing.JOptionPane;
 
-import CT_Tools.ResourceReader;
+import jhd.CT_Tools.ResourceReader;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
